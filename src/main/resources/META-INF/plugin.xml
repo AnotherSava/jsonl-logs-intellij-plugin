@@ -1,0 +1,53 @@
+<idea-plugin>
+    <id>com.olegs.jsonl</id>
+    <name>JSONL Log Viewer</name>
+    <vendor email="oleg.savelev@gmail.com">Oleg Savelev</vendor>
+
+    <description><![CDATA[
+        Renders <code>.jsonl</code> files (JSON-per-line structured logs) in a readable plain-text
+        format side-by-side with the raw JSON. Each line becomes:
+        <pre>&lt;local-timestamp&gt; &lt;level&gt; &lt;target&gt;: &lt;message&gt; &lt;k=v&gt; ...</pre>
+        The preview updates live as you edit the raw file.
+    ]]></description>
+
+    <change-notes><![CDATA[
+        <ul>
+          <li>0.3.0 — independent Left/Right pane selectors (Raw / Formatted /
+              Inspect / Off), exposed as toggle buttons in the toolbar. Inspect
+              tracks the formatted pane's caret, falling back to the raw pane's
+              caret when formatted isn't visible.</li>
+          <li>0.2.0 — four view modes (Raw, Formatted, Split, Inspect).</li>
+          <li>0.1.0 — initial release with split raw/formatted editor for .jsonl files.</li>
+        </ul>
+    ]]></change-notes>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <fileType name="PLAIN_TEXT" extensions="jsonl"/>
+        <fileEditorProvider implementation="com.olegs.jsonl.JsonlSplitEditorProvider"/>
+        <applicationService serviceImplementation="com.olegs.jsonl.JsonlSettings"/>
+        <applicationConfigurable
+            parentId="tools"
+            instance="com.olegs.jsonl.JsonlConfigurable"
+            id="com.olegs.jsonl.JsonlConfigurable"
+            displayName="JSONL Log Viewer"/>
+        <colorSettingsPage implementation="com.olegs.jsonl.JsonlColorSettingsPage"/>
+    </extensions>
+
+    <actions>
+        <action id="JsonlLogViewer.FilterBy"
+                class="com.olegs.jsonl.FilterByAction"
+                text="Filter by Selection"
+                description="Set the JSONL log Filter textbox to the selected text">
+            <add-to-group group-id="EditorPopupMenu" anchor="first"/>
+        </action>
+
+        <!-- Minimal popup used by the read-only viewer panes (formatted / filtered-raw / inspect). -->
+        <group id="JsonlLogViewer.ViewerPopup">
+            <reference ref="JsonlLogViewer.FilterBy"/>
+            <separator/>
+            <reference ref="$Copy"/>
+        </group>
+    </actions>
+</idea-plugin>
