@@ -31,7 +31,7 @@ The editor is a two-pane split. Each pane independently shows one of:
 |---|---|
 | **Raw** | The raw `.jsonl` lines (filtered when a filter is active) |
 | **Formatted** | Human-readable reformatted log lines with highlighting |
-| **Inspect** | Pretty-printed JSON of the entry at the caret line in the other pane |
+| **Inspect** *(right side only — floating overlay)* | Pretty-printed JSON of the entry at the caret line, anchored to the top-right or bottom-right corner of the editor |
 | **Off** *(right side only)* | Hide this pane, show the other full-width |
 
 Defaults: **Left = Formatted, Right = Inspect**. Both sides remember your last choice per `.jsonl` file, with a fallback to the last-used-anywhere.
@@ -40,11 +40,15 @@ Pick a side's pane using the icon buttons in the toolbar:
 
 ![Pane selector toolbar](../screenshots/toolbar-panels.png)
 
-The pane that's already selected on the left is **disabled** on the right group, so you can't show the same thing in both panes.
+The pane that's already selected on the left is **disabled** on the right group, so you can't show the same thing in both panes. Inspect is exposed only on the right because it renders as an overlay on top of the left pane — the left pane always shows Raw or Formatted.
 
-## Inspect mode
+## Inspect overlay
 
-When a pane is set to Inspect, its sibling pane drives it via caret position. Click a line in the formatted (or raw) pane, and the Inspect pane updates to the pretty-printed JSON of that entry — with JSON syntax highlighting if the JSON plugin is available in your IDE (it is in IntelliJ IDEA).
+When the right panel is set to Inspect, the left pane fills the editor full-width and the JSON inspector floats over it as a corner-anchored overlay. The caret position in the left pane drives the overlay's content — click any line in the formatted (or raw) pane and the overlay updates to the pretty-printed JSON of that entry. JSON syntax highlighting kicks in if the JSON plugin is available in your IDE (it is in IntelliJ IDEA).
+
+The overlay's chrome lives in the top-right corner: a corner-toggle (↓ / ↑) flips the anchor between top-right and bottom-right, and a close button (×) hides the overlay (equivalent to the toolbar's "Right panel: Off"). Clicking the toolbar's **Inspect** button while it's already selected also flips the corner.
+
+The free corner of the overlay (bottom-left when anchored top, top-left when anchored bottom) carries a resize grip — drag it to grow or shrink the overlay; size and corner are persisted across sessions.
 
 The line-index ↔ raw-line mapping works correctly across filters: if you filter to 8 `ERROR` entries out of 500 lines, clicking on "Formatted line 3" shows the pretty JSON of the 3rd matching entry — not raw line 3.
 
@@ -106,6 +110,7 @@ The gear icon at the very left of the toolbar opens a popup containing:
 
 - Every rendering toggle from the Settings page (Strip common prefix, Colour severity, Highlight field names, Bold message, Italic target, Dim timestamp/`=`, Prettify values)
 - Scroll to latest on open
+- Auto-resize inspect height (auto-fit the inspect overlay's height to the current entry)
 - Four Align radio items (None / Targets / Messages / Fields)
 - **Open full settings…** — opens the Settings dialog directly at the JSONL Log Viewer page
 
@@ -149,6 +154,7 @@ All padding widths are computed from the **filtered subset** so alignment stays 
 | Setting | Default | Effect |
 |---|---|---|
 | Scroll to the latest entry when a `.jsonl` file is opened | **off** | Move caret to the last non-blank line on open |
+| Auto-resize inspect height | **off** | When the inspect overlay is shown, recompute its vertical size on every caret move so the current entry's pretty-printed JSON fits exactly. Width and corner stay user-controlled |
 
 ### Field mapping
 
@@ -191,8 +197,8 @@ When `fields container` is blank, every top-level JSON key that isn't consumed b
 
 ## Features
 
-- **Two-pane split editor** with independent per-pane content (Raw / Formatted / Inspect / Off)
-- **Caret-driven Inspect pane** showing pretty-printed JSON of the current entry
+- **Two-pane split editor** with independent per-pane content (Raw / Formatted on the left, Raw / Formatted / Inspect / Off on the right)
+- **Caret-driven Inspect overlay** anchored to the top-right or bottom-right corner of the editor, with corner-toggle, close button, and a resize grip. Optional auto-resize fits the height to the current entry exactly.
 - **Severity / target / text filters** composing independently, with 200 ms debounce on text input
 - **Filter by selection** context action on any pane
 - **Gear popup** with every rendering toggle plus an Open-full-settings shortcut

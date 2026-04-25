@@ -48,19 +48,31 @@ import com.intellij.ui.OnePixelSplitter
 import com.intellij.ui.SearchTextField
 import com.intellij.util.Alarm
 import com.intellij.util.ui.JBUI
+import java.awt.BasicStroke
 import java.awt.BorderLayout
 import java.awt.Color
+import java.awt.Component
+import java.awt.Container
 import java.awt.Cursor
+import java.awt.Dimension
 import java.awt.Font
+import java.awt.Graphics
+import java.awt.Graphics2D
+import java.awt.LayoutManager
+import java.awt.Point
+import java.awt.RenderingHints
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.beans.PropertyChangeListener
 import java.time.Instant
+import javax.swing.BorderFactory
+import javax.swing.border.Border
 import javax.swing.event.DocumentEvent as SwingDocumentEvent
 import javax.swing.Icon
 import javax.swing.JComponent
 import javax.swing.JLabel
 import javax.swing.JPanel
+import javax.swing.SwingConstants
 
 enum class Pane(val displayName: String, val icon: Icon) {
     RAW("Raw", AllIcons.FileTypes.Json),
@@ -70,6 +82,8 @@ enum class Pane(val displayName: String, val icon: Icon) {
 }
 
 enum class Side(val displayName: String) { LEFT("Left"), RIGHT("Right") }
+
+enum class OverlayCorner { TOP, BOTTOM }
 
 enum class TimeDisplay { RELATIVE, ABSOLUTE }
 
@@ -119,7 +133,7 @@ class JsonlEditor(
     private val alarm = Alarm(Alarm.ThreadToUse.SWING_THREAD, this)
     private val rootPanel = JPanel(BorderLayout())
     private val props = PropertiesComponent.getInstance()
-    private var leftPane: Pane = loadPane(KEY_LEFT, Pane.FORMATTED).takeUnless { it == Pane.NONE } ?: Pane.FORMATTED
+    private var leftPane: Pane = loadPane(KEY_LEFT, Pane.FORMATTED).coerceLeft()
     private var rightPane: Pane = loadPane(KEY_RIGHT, Pane.INSPECT).let { if (it == leftPane) Pane.NONE else it }
     private var lastContent: JComponent? = null
     private var stats: JsonlStats = JsonlStats(0, null, null)
@@ -131,6 +145,7 @@ class JsonlEditor(
     private var formattedToRawLine: List<Int> = emptyList()
     private val refreshAlarm = Alarm(Alarm.ThreadToUse.SWING_THREAD, this)
     private val filterAlarm = Alarm(Alarm.ThreadToUse.SWING_THREAD, this)
+    private val inspectOverlay: InspectOverlay by lazy { InspectOverlay() }
 
     init {
         textEditor.editor.settings.isRightMarginShown = false
@@ -138,6 +153,12 @@ class JsonlEditor(
         // drives paint through it; our job on each rebuild is to publish a fresh
         // token list via Document.putUserData(JSONL_HIGHLIGHT_SPANS, …).
         (formattedEditor as? EditorEx)?.highlighter = JsonlTokenHighlighter(formattedDoc)
+        // Inspect overlay's auto-resize relies on contentSize matching the document
+        // exactly — drop the editor's default virtual scroll padding.
+        (inspectEditor as? EditorEx)?.settings?.let {
+            it.additionalLinesCount = 0
+            it.isAdditionalPageAtBottom = false
+        }
         val sourceDoc = textEditor.editor.document
         rebuildFromSource(sourceDoc.immutableCharSequence.toString())
 
@@ -205,7 +226,7 @@ class JsonlEditor(
             add(GearAction())
             add(SpacerAction())
             add(StaticLabelAction("Left panel: "))
-            Pane.entries.filter { it != Pane.NONE }.forEach { add(PickPaneAction(Side.LEFT, it)) }
+            Pane.entries.filter { it != Pane.NONE && it != Pane.INSPECT }.forEach { add(PickPaneAction(Side.LEFT, it)) }
             add(SpacerAction())
             add(StaticLabelAction("Right panel: "))
             Pane.entries.forEach { add(PickPaneAction(Side.RIGHT, it)) }
@@ -258,11 +279,9 @@ class JsonlEditor(
             Side.LEFT -> {
                 leftPane = pane
                 if (pane == rightPane) rightPane = Pane.NONE
-                if (pane == Pane.INSPECT && rightPane != Pane.RAW) rightPane = Pane.FORMATTED
             }
             Side.RIGHT -> {
                 rightPane = pane
-                if (pane == Pane.INSPECT && leftPane != Pane.RAW) leftPane = Pane.FORMATTED
             }
         }
         persistPanes()
@@ -279,6 +298,7 @@ class JsonlEditor(
         val left = componentFor(leftPane)
         val right = componentFor(rightPane)
         val content: JComponent = when {
+            left != null && rightPane == Pane.INSPECT -> buildInspectOverlayLayer(left)
             left != null && right != null -> OnePixelSplitter(false, SPLITTER_PROPORTION_KEY, 0.5f).apply {
                 firstComponent = left
                 secondComponent = right
@@ -295,6 +315,267 @@ class JsonlEditor(
         lastContent = content
         rootPanel.revalidate()
         rootPanel.repaint()
+    }
+
+    private fun buildInspectOverlayLayer(left: JComponent): JComponent {
+        val container = JPanel(null)
+        container.layout = InspectOverlayLayout(left, inspectOverlay)
+        container.add(left)
+        container.add(inspectOverlay)
+        container.setComponentZOrder(inspectOverlay, 0)
+        inspectOverlay.refreshCornerIcon()
+        return container
+    }
+
+    private fun loadOverlayCorner(): OverlayCorner {
+        val stored = props.getValue(KEY_OVERLAY_CORNER) ?: return OverlayCorner.TOP
+        return OverlayCorner.entries.find { it.name == stored } ?: OverlayCorner.TOP
+    }
+
+    private fun saveOverlayCorner(corner: OverlayCorner) {
+        props.setValue(KEY_OVERLAY_CORNER, corner.name)
+    }
+
+    private fun loadOverlaySize(parentW: Int, parentH: Int): Dimension {
+        val storedW = props.getInt(KEY_OVERLAY_W, -1)
+        val storedH = props.getInt(KEY_OVERLAY_H, -1)
+        val w = if (storedW > 0) storedW else (parentW * 0.35).toInt()
+        val h = if (storedH > 0) storedH else (parentH * 0.60).toInt()
+        return Dimension(w, h)
+    }
+
+    private fun saveOverlaySize(width: Int, height: Int) {
+        props.setValue(KEY_OVERLAY_W, width, -1)
+        props.setValue(KEY_OVERLAY_H, height, -1)
+    }
+
+    private inner class InspectOverlayLayout(
+        private val left: JComponent,
+        private val overlay: InspectOverlay,
+    ) : LayoutManager {
+        override fun addLayoutComponent(name: String?, comp: Component?) {}
+        override fun removeLayoutComponent(comp: Component?) {}
+        override fun preferredLayoutSize(parent: Container): Dimension = parent.size
+        override fun minimumLayoutSize(parent: Container): Dimension = Dimension(0, 0)
+
+        override fun layoutContainer(parent: Container) {
+            val w = parent.width
+            val h = parent.height
+            left.setBounds(0, 0, w, h)
+
+            val maxW = (w - OVERLAY_INSET_PX).coerceAtLeast(1)
+            val maxH = (h - OVERLAY_INSET_PX).coerceAtLeast(1)
+            val requested = loadOverlaySize(w, h)
+            val ow = minOf(requested.width, maxW).coerceAtLeast(minOf(OVERLAY_MIN_W, maxW))
+            val oh = minOf(requested.height, maxH).coerceAtLeast(minOf(OVERLAY_MIN_H, maxH))
+            if (ow != requested.width || oh != requested.height) saveOverlaySize(ow, oh)
+
+            val ox = (w - ow - OVERLAY_INSET_PX).coerceAtLeast(0)
+            val oy = when (loadOverlayCorner()) {
+                OverlayCorner.TOP -> OVERLAY_INSET_PX
+                OverlayCorner.BOTTOM -> (h - oh - OVERLAY_INSET_PX).coerceAtLeast(0)
+            }
+            overlay.setBounds(ox, oy, ow, oh)
+        }
+    }
+
+    private inner class InspectOverlay : JPanel(null) {
+        private val cornerButton = JLabel(iconForCorner(loadOverlayCorner())).apply {
+            cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+            toolTipText = "Move overlay to the other corner"
+            isOpaque = false
+            horizontalAlignment = SwingConstants.CENTER
+            verticalAlignment = SwingConstants.CENTER
+        }
+        private val closeButton = JLabel(ChromeIcon(ChromeIconType.CLOSE)).apply {
+            cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+            toolTipText = "Hide inspect overlay"
+            isOpaque = false
+            horizontalAlignment = SwingConstants.CENTER
+            verticalAlignment = SwingConstants.CENTER
+        }
+        private val editorComponent: JComponent = inspectEditor.component
+        private val gripComponent = ResizeGrip()
+        private var startSize: Dimension = Dimension()
+        private var startPointOnScreen: Point = Point()
+
+        init {
+            isOpaque = true
+            background = JBColor.PanelBackground
+            border = borderForCorner(loadOverlayCorner())
+            add(cornerButton)
+            add(closeButton)
+            add(editorComponent)
+            add(gripComponent)
+            // Grip + chrome buttons on top so they intercept mouse events over the editor.
+            setComponentZOrder(gripComponent, 0)
+            setComponentZOrder(closeButton, 1)
+            setComponentZOrder(cornerButton, 2)
+            cornerButton.addMouseListener(object : MouseAdapter() {
+                override fun mouseClicked(e: MouseEvent) {
+                    flipCorner()
+                }
+            })
+            closeButton.addMouseListener(object : MouseAdapter() {
+                override fun mouseClicked(e: MouseEvent) {
+                    select(Side.RIGHT, Pane.NONE)
+                }
+            })
+            val resizeAdapter = object : MouseAdapter() {
+                override fun mousePressed(e: MouseEvent) {
+                    startPointOnScreen = e.locationOnScreen
+                    startSize = Dimension(this@InspectOverlay.width, this@InspectOverlay.height)
+                }
+                override fun mouseDragged(e: MouseEvent) {
+                    val current = e.locationOnScreen
+                    val dx = current.x - startPointOnScreen.x
+                    val dy = current.y - startPointOnScreen.y
+                    val parentBox = this@InspectOverlay.parent ?: return
+                    // Both anchors leave the LEFT edge free → leftward mouse motion (dx<0) grows width.
+                    val rawW = startSize.width - dx
+                    // TOP anchor: bottom edge free → downward (dy>0) grows height.
+                    // BOTTOM anchor: top edge free → upward (dy<0) grows height.
+                    val rawH = if (loadOverlayCorner() == OverlayCorner.TOP) startSize.height + dy else startSize.height - dy
+                    val maxW = parentBox.width.coerceAtLeast(1)
+                    val maxH = parentBox.height.coerceAtLeast(1)
+                    val newW = rawW.coerceIn(minOf(OVERLAY_MIN_W, maxW), maxW)
+                    val newH = rawH.coerceIn(minOf(OVERLAY_MIN_H, maxH), maxH)
+                    saveOverlaySize(newW, newH)
+                    parentBox.revalidate()
+                    parentBox.repaint()
+                }
+            }
+            gripComponent.addMouseListener(resizeAdapter)
+            gripComponent.addMouseMotionListener(resizeAdapter)
+        }
+
+        override fun doLayout() {
+            val ins = insets
+            val innerX = ins.left
+            val innerY = ins.top
+            val innerW = (width - ins.left - ins.right).coerceAtLeast(0)
+            val innerH = (height - ins.top - ins.bottom).coerceAtLeast(0)
+            editorComponent.setBounds(innerX, innerY, innerW, innerH)
+            // Square chrome buttons sized to one line of editor text — the icon centers within,
+            // giving uniform padding on all four sides equal to (lineHeight - iconSize) / 2.
+            val bsz = inspectEditor.lineHeight.coerceAtLeast(AllIcons.Actions.Close.iconWidth + 2)
+            closeButton.setBounds(innerX + innerW - bsz, innerY, bsz, bsz)
+            cornerButton.setBounds(innerX + innerW - 2 * bsz, innerY, bsz, bsz)
+            val corner = loadOverlayCorner()
+            val gripY = if (corner == OverlayCorner.TOP) innerY + innerH - OVERLAY_GRIP_PX else innerY
+            gripComponent.setBounds(innerX, gripY, OVERLAY_GRIP_PX, OVERLAY_GRIP_PX)
+            gripComponent.cursor = Cursor.getPredefinedCursor(
+                if (corner == OverlayCorner.TOP) Cursor.SW_RESIZE_CURSOR else Cursor.NW_RESIZE_CURSOR
+            )
+        }
+
+        fun refreshCornerIcon() {
+            val corner = loadOverlayCorner()
+            cornerButton.icon = iconForCorner(corner)
+            border = borderForCorner(corner)
+        }
+
+        fun flipCorner() {
+            val next = if (loadOverlayCorner() == OverlayCorner.TOP) OverlayCorner.BOTTOM else OverlayCorner.TOP
+            saveOverlayCorner(next)
+            cornerButton.icon = iconForCorner(next)
+            border = borderForCorner(next)
+            parent?.revalidate()
+            parent?.repaint()
+        }
+
+        private fun iconForCorner(corner: OverlayCorner): Icon =
+            if (corner == OverlayCorner.TOP) ChromeIcon(ChromeIconType.DOWN) else ChromeIcon(ChromeIconType.UP)
+
+        private fun borderForCorner(corner: OverlayCorner): Border = when (corner) {
+            // Horizontal anchor side flush (0); other three sides 1px.
+            OverlayCorner.TOP -> BorderFactory.createMatteBorder(
+                0, OVERLAY_BORDER_PX, OVERLAY_BORDER_PX, OVERLAY_BORDER_PX, JBColor.GRAY,
+            )
+            OverlayCorner.BOTTOM -> BorderFactory.createMatteBorder(
+                OVERLAY_BORDER_PX, OVERLAY_BORDER_PX, 0, OVERLAY_BORDER_PX, JBColor.GRAY,
+            )
+        }
+    }
+
+    private enum class ChromeIconType { DOWN, UP, CLOSE }
+
+    private inner class ChromeIcon(private val type: ChromeIconType) : Icon {
+
+        // Match the standard plugin toolbar icon size (e.g. tab close button).
+        private fun size(): Int = AllIcons.Actions.Close.iconWidth
+
+        override fun getIconWidth(): Int = size()
+        override fun getIconHeight(): Int = size()
+
+        override fun paintIcon(c: Component?, g: Graphics, x: Int, y: Int) {
+            val g2 = g.create() as Graphics2D
+            try {
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+                g2.color = JBColor.foreground()
+                g2.stroke = BasicStroke(1.5f)
+                val sz = size()
+                val cx = sz / 2
+                val pad = 2
+                when (type) {
+                    ChromeIconType.DOWN -> {
+                        val top = y + pad
+                        val bot = y + sz - pad - 1
+                        val wingY = y + sz * 5 / 8
+                        g2.drawLine(x + cx, top, x + cx, bot)
+                        g2.drawLine(x + pad + 2, wingY, x + cx, bot)
+                        g2.drawLine(x + sz - pad - 3, wingY, x + cx, bot)
+                    }
+                    ChromeIconType.UP -> {
+                        val top = y + pad
+                        val bot = y + sz - pad - 1
+                        val wingY = y + sz * 3 / 8
+                        g2.drawLine(x + cx, top, x + cx, bot)
+                        g2.drawLine(x + pad + 2, wingY, x + cx, top)
+                        g2.drawLine(x + sz - pad - 3, wingY, x + cx, top)
+                    }
+                    ChromeIconType.CLOSE -> {
+                        val a = pad + 1
+                        val b = sz - pad - 2
+                        g2.drawLine(x + a, y + a, x + b, y + b)
+                        g2.drawLine(x + a, y + b, x + b, y + a)
+                    }
+                }
+            } finally {
+                g2.dispose()
+            }
+        }
+    }
+
+    private inner class ResizeGrip : JPanel() {
+        init {
+            isOpaque = false
+            toolTipText = "Drag to resize"
+        }
+
+        override fun paintComponent(g: Graphics) {
+            super.paintComponent(g)
+            val g2 = g.create() as Graphics2D
+            try {
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+                g2.color = JBColor.GRAY
+                g2.stroke = BasicStroke(1.5f)
+                val angle = when (loadOverlayCorner()) {
+                    OverlayCorner.TOP -> Math.PI / 2.0      // BL grip → 90° CW from BR base
+                    OverlayCorner.BOTTOM -> Math.PI          // TL grip → 180° from BR base
+                }
+                g2.rotate(angle, width / 2.0, height / 2.0)
+                val w = width
+                val h = height
+                // BR-style base art: 3 short diagonals concentrated in the bottom-right.
+                for (i in 0 until 3) {
+                    val o = i * 4
+                    g2.drawLine(2 + o, h - 4, w - 4, 2 + o)
+                }
+            } finally {
+                g2.dispose()
+            }
+        }
     }
 
     // Inspect needs a "current line" from the driving pane. If the driving editor's
@@ -330,7 +611,7 @@ class JsonlEditor(
         Pane.NONE -> null
     }
 
-    private fun inspectVisible(): Boolean = leftPane == Pane.INSPECT || rightPane == Pane.INSPECT
+    private fun inspectVisible(): Boolean = rightPane == Pane.INSPECT
 
     private fun rebuildFromSource(source: String) {
         val cfg = JsonlSettings.getInstance().config
@@ -377,12 +658,14 @@ class JsonlEditor(
         val rawIdx = formattedToRawLine.getOrNull(line)
         if (rawIdx == null || rawIdx < 0 || rawIdx >= rawDoc.lineCount) {
             setInspectText("")
+            autoResizeOverlayIfEnabled()
             return
         }
         val start = rawDoc.getLineStartOffset(rawIdx)
         val end = rawDoc.getLineEndOffset(rawIdx)
         val lineText = rawDoc.immutableCharSequence.subSequence(start, end).toString()
         setInspectText(JsonlFormatter.prettyJson(lineText))
+        autoResizeOverlayIfEnabled()
     }
 
     private fun setInspectText(text: String) {
@@ -390,6 +673,30 @@ class JsonlEditor(
             inspectDoc.setText(text)
             inspectEditor.caretModel.moveToLogicalPosition(LogicalPosition(0, 0))
         }
+    }
+
+    // When auto-resize is on, recompute the overlay's height to fit the current
+    // Inspect content exactly. Width is left untouched so user resize-drags on
+    // the horizontal axis are preserved. The horizontal scrollbar's space is
+    // always reserved, regardless of whether the current content overflows.
+    //
+    // The height is derived purely from the document (lineCount × lineHeight)
+    // plus constants — never from the editor's contentSize or live scrollbar
+    // measurements. Both of those oscillate based on whether a horizontal
+    // scrollbar is currently shown, which used to make the auto-resized height
+    // depend on the previous content's overflow state instead of the new one's.
+    private fun autoResizeOverlayIfEnabled() {
+        if (!JsonlSettings.getInstance().config.autoResizeInspect) return
+        if (rightPane != Pane.INSPECT) return
+        val container = inspectOverlay.parent ?: return
+        val lh = inspectEditor.lineHeight.coerceAtLeast(1)
+        val lines = inspectDoc.lineCount.coerceAtLeast(1)
+        val docH = lines * lh
+        val borderH = inspectOverlay.insets.let { it.top + it.bottom }
+        val targetH = docH + borderH + JBUI.scale(HSCROLL_RESERVED_PX)
+        props.setValue(KEY_OVERLAY_H, targetH, -1)
+        container.revalidate()
+        container.repaint()
     }
 
     private class StaticLabelAction(private val text: String) : AnAction(), CustomComponentAction {
@@ -528,6 +835,7 @@ class JsonlEditor(
                 }
                 addSeparator()
                 add(settingToggle("Scroll to latest on open") { it::scrollToEndOnOpen })
+                add(settingToggle("Auto-resize inspect height") { it::autoResizeInspect })
                 addSeparator()
                 add(object : AnAction("Open full settings…") {
                     override fun actionPerformed(e: AnActionEvent) {
@@ -593,7 +901,12 @@ class JsonlEditor(
             (if (side == Side.LEFT) leftPane else rightPane) == pane
 
         override fun setSelected(e: AnActionEvent, state: Boolean) {
-            if (state) select(side, pane)
+            if (state) {
+                select(side, pane)
+            } else if (side == Side.RIGHT && pane == Pane.INSPECT && rightPane == Pane.INSPECT) {
+                // Subsequent clicks on the already-selected Inspect button flip the corner.
+                inspectOverlay.flipCorner()
+            }
         }
 
         override fun update(e: AnActionEvent) {
@@ -621,7 +934,7 @@ class JsonlEditor(
 
     override fun setState(state: FileEditorState) {
         if (state !is JsonlFileEditorState) return
-        leftPane = state.leftPane
+        leftPane = state.leftPane.coerceLeft()
         rightPane = state.rightPane
         timeDisplay = state.timeDisplay
         session = state.toSession()
@@ -654,6 +967,19 @@ class JsonlEditor(
         const val KEY_LEFT = "com.olegs.jsonl.leftPane"
         const val KEY_RIGHT = "com.olegs.jsonl.rightPane"
         const val KEY_TIME_DISPLAY = "com.olegs.jsonl.timeDisplay"
+        const val KEY_OVERLAY_W = "com.olegs.jsonl.inspectOverlay.width"
+        const val KEY_OVERLAY_H = "com.olegs.jsonl.inspectOverlay.height"
+        const val KEY_OVERLAY_CORNER = "com.olegs.jsonl.inspectOverlay.corner"
+        const val OVERLAY_INSET_PX = 0
+        const val OVERLAY_MIN_W = 240
+        const val OVERLAY_MIN_H = 140
+        const val OVERLAY_GRIP_PX = 16
+        const val OVERLAY_BORDER_PX = 1
+        // Reserved bottom slack matching a horizontal scrollbar's height — kept
+        // constant (and decoupled from the editor's live scrollbar state) so the
+        // auto-resized height doesn't oscillate between content with and without
+        // horizontal overflow.
+        const val HSCROLL_RESERVED_PX = 11
 
         fun loadPane(key: String, default: Pane): Pane {
             val stored = PropertiesComponent.getInstance().getValue(key) ?: return default
@@ -686,9 +1012,13 @@ class JsonlEditor(
             return when (pane) {
                 Pane.RAW -> "Show the raw .jsonl file on the $sideWord"
                 Pane.FORMATTED -> "Show the formatted log on the $sideWord"
-                Pane.INSPECT -> "Show pretty-printed JSON of the current line on the $sideWord"
+                Pane.INSPECT -> "Show pretty-printed JSON of the current line as a floating overlay"
                 Pane.NONE -> "Hide the $sideWord pane"
             }
         }
+
+        // Inspect can no longer be hosted on the left, and left must always show
+        // a real pane. Coerce both forbidden states (NONE, INSPECT) to FORMATTED.
+        fun Pane.coerceLeft(): Pane = if (this == Pane.NONE || this == Pane.INSPECT) Pane.FORMATTED else this
     }
 }
