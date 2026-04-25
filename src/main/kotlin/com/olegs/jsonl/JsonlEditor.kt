@@ -61,6 +61,8 @@ import java.awt.Graphics2D
 import java.awt.LayoutManager
 import java.awt.Point
 import java.awt.RenderingHints
+import java.awt.event.ComponentAdapter
+import java.awt.event.ComponentEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.beans.PropertyChangeListener
@@ -159,6 +161,7 @@ class JsonlEditor(
             it.additionalLinesCount = 0
             it.isAdditionalPageAtBottom = false
         }
+        applySoftWrap()
         val sourceDoc = textEditor.editor.document
         rebuildFromSource(sourceDoc.immutableCharSequence.toString())
 
@@ -185,6 +188,7 @@ class JsonlEditor(
         val busConnection = ApplicationManager.getApplication().messageBus.connect(this)
         busConnection.subscribe(JsonlSettingsListener.TOPIC, object : JsonlSettingsListener {
             override fun settingsChanged() {
+                applySoftWrap()
                 applyFiltersNow()
             }
         })
@@ -447,6 +451,18 @@ class JsonlEditor(
             }
             gripComponent.addMouseListener(resizeAdapter)
             gripComponent.addMouseMotionListener(resizeAdapter)
+            // Width changes alter the soft-wrap point, which can change the visual
+            // line count. Re-run auto-resize so the height tracks the new wrap.
+            // Height-only changes are filtered out to avoid feedback loops.
+            addComponentListener(object : ComponentAdapter() {
+                private var lastWidth = -1
+                override fun componentResized(e: ComponentEvent) {
+                    val w = width
+                    if (w == lastWidth) return
+                    lastWidth = w
+                    ApplicationManager.getApplication().invokeLater { autoResizeOverlayIfEnabled() }
+                }
+            })
         }
 
         override fun doLayout() {
@@ -677,26 +693,39 @@ class JsonlEditor(
 
     // When auto-resize is on, recompute the overlay's height to fit the current
     // Inspect content exactly. Width is left untouched so user resize-drags on
-    // the horizontal axis are preserved. The horizontal scrollbar's space is
-    // always reserved, regardless of whether the current content overflows.
+    // the horizontal axis are preserved.
     //
-    // The height is derived purely from the document (lineCount × lineHeight)
-    // plus constants — never from the editor's contentSize or live scrollbar
+    // The height is derived purely from visualLineCount × lineHeight plus
+    // constants — never from the editor's contentSize or live scrollbar
     // measurements. Both of those oscillate based on whether a horizontal
     // scrollbar is currently shown, which used to make the auto-resized height
     // depend on the previous content's overflow state instead of the new one's.
+    // When soft wrap is off, we reserve space for the horizontal scrollbar so
+    // toggling between content that does/doesn't overflow doesn't oscillate.
     private fun autoResizeOverlayIfEnabled() {
-        if (!JsonlSettings.getInstance().config.autoResizeInspect) return
+        val cfg = JsonlSettings.getInstance().config
+        if (!cfg.autoResizeInspect) return
         if (rightPane != Pane.INSPECT) return
         val container = inspectOverlay.parent ?: return
         val lh = inspectEditor.lineHeight.coerceAtLeast(1)
-        val lines = inspectDoc.lineCount.coerceAtLeast(1)
+        // Visual line count includes soft-wrap continuations when wrapping is on,
+        // so a single long logical line that wraps across N rows contributes N rows
+        // of height instead of one.
+        val lines = (inspectEditor.offsetToVisualPosition(inspectDoc.textLength).line + 1)
+            .coerceAtLeast(1)
         val docH = lines * lh
         val borderH = inspectOverlay.insets.let { it.top + it.bottom }
-        val targetH = docH + borderH + JBUI.scale(HSCROLL_RESERVED_PX)
+        // No horizontal scrollbar when wrapping is on, so don't reserve space for one.
+        val hscrollReserved = if (cfg.softWrapInspect) 0 else JBUI.scale(HSCROLL_RESERVED_PX)
+        val targetH = docH + borderH + hscrollReserved
+        if (targetH == inspectOverlay.height) return
         props.setValue(KEY_OVERLAY_H, targetH, -1)
         container.revalidate()
         container.repaint()
+    }
+
+    private fun applySoftWrap() {
+        inspectEditor.settings.isUseSoftWraps = JsonlSettings.getInstance().config.softWrapInspect
     }
 
     private class StaticLabelAction(private val text: String) : AnAction(), CustomComponentAction {
@@ -836,6 +865,7 @@ class JsonlEditor(
                 addSeparator()
                 add(settingToggle("Scroll to latest on open") { it::scrollToEndOnOpen })
                 add(settingToggle("Auto-resize inspect height") { it::autoResizeInspect })
+                add(settingToggle("Soft wrap inspect text") { it::softWrapInspect })
                 addSeparator()
                 add(object : AnAction("Open full settings…") {
                     override fun actionPerformed(e: AnActionEvent) {

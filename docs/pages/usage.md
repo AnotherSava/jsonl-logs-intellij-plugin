@@ -111,6 +111,7 @@ The gear icon at the very left of the toolbar opens a popup containing:
 - Every rendering toggle from the Settings page (Strip common prefix, Colour severity, Highlight field names, Bold message, Italic target, Dim timestamp/`=`, Prettify values)
 - Scroll to latest on open
 - Auto-resize inspect height (auto-fit the inspect overlay's height to the current entry)
+- Soft wrap inspect text (wrap long JSON values to the overlay's width instead of overflowing)
 - Four Align radio items (None / Targets / Messages / Fields)
 - **Open full settings…** — opens the Settings dialog directly at the JSONL Log Viewer page
 
@@ -155,6 +156,7 @@ All padding widths are computed from the **filtered subset** so alignment stays 
 |---|---|---|
 | Scroll to the latest entry when a `.jsonl` file is opened | **off** | Move caret to the last non-blank line on open |
 | Auto-resize inspect height | **off** | When the inspect overlay is shown, recompute its vertical size on every caret move so the current entry's pretty-printed JSON fits exactly. Width and corner stay user-controlled |
+| Soft wrap inspect text | **on** | Wrap long JSON values inside the inspect overlay to its width instead of overflowing. When auto-resize is on, wrapped continuations count toward the height so wrapped lines stay fully visible |
 
 ### Field mapping
 
