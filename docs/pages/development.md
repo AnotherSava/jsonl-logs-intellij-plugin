@@ -2,6 +2,7 @@
 layout: default
 title: Development
 nav_order: 3
+has_children: true
 ---
 
 ## Setup
@@ -34,13 +35,13 @@ Then in your IDE: **Settings → Plugins → ⚙ → Install plugin from disk…
 
 ## Architecture
 
-The plugin is built around three principles:
+The plugin is built around three core ideas:
 
-1. **Parse each line exactly once.** Every `.jsonl` line is parsed into a strongly-typed `LogEntry` record by a stateless parser, and every downstream stage (filter, format, stats, alignment width computation) consumes that record — no re-parsing.
-2. **Pure logic is Swing-free.** Parsing, formatting, value prettification, prefix detection, and filter predicates are pure Kotlin that depend only on Gson and `java.time`, so they are unit-tested without spinning up the IntelliJ platform.
-3. **Let IntelliJ drive the paint cycle.** Highlights are published as sidecar data on the document and read by a custom `EditorHighlighter`. No per-keystroke markup-model churn.
+1. **Parse each line exactly once** — every downstream stage consumes a strongly-typed `LogEntry` rather than re-parsing.
+2. **Pure logic is Swing-free** — the parsing/formatting pipeline depends only on Gson and `java.time` and is unit-tested without the IntelliJ platform.
+3. **Let IntelliJ drive the paint cycle** — highlights are published as sidecar data on the document and read by a custom `EditorHighlighter`.
 
-See the [Architecture reference](architecture) for the full domain model, data flow diagram, component-by-component breakdown, settings persistence matrix, and live-update path.
+See the [Architecture reference](development/architecture) for the full domain model, data flow diagram, component-by-component breakdown, settings persistence matrix, and live-update path.
 
 ## Project structure
 
@@ -76,12 +77,6 @@ src/test/kotlin/com/olegs/jsonl/
 └── LogEntryParserTest.kt        # mapping tests (Rust / pino / Serilog / empty paths)
 ```
 
-## Architecture reference
-
-For internal details — domain model, data-flow diagram, component breakdown, settings persistence matrix, live-update path — see:
-
-- [Architecture reference](architecture)
-
 ## Testing
 
 All tests are pure Kotlin — no IntelliJ platform startup required. Tests live under `src/test/kotlin/com/olegs/jsonl/` and are organized by the component they cover:
@@ -108,58 +103,7 @@ For an automated stop/rebuild/extract/relaunch loop usable from Claude Code, see
 
 ## Extension points
 
-### Adding a new filter predicate
-
-`FilterChain.kt` is the place.
-
-1. Add a new `EntryPredicate` implementation:
-   ```kotlin
-   class ChatIdPredicate(private val chatId: String) : EntryPredicate {
-       override fun accepts(entry: LogEntry, formatted: String): Boolean {
-           if (chatId.isEmpty()) return true
-           val el = entry.fields["chat_id"] ?: return false
-           return el.asString == chatId
-       }
-   }
-   ```
-2. Add session state: extend `JsonlSession` with the new filter value.
-3. Include it in `JsonlRebuilder`'s chain construction (conditionally, keyed on whether the value is the sentinel "inactive" value).
-4. Update `isFilterActive()` to account for the new filter.
-5. Add UI in `JsonlEditor.installToolbar()` — either a `ComboBoxAction` (like `TargetSelectorAction`) or a `SearchTextField`-style control.
-6. Persist it in `JsonlFileEditorState` + provider's `readState`/`writeState`.
-7. Add a test in `JsonlRebuilderTest`.
-
-### Adding a new highlight colour
-
-1. Declare the key in `JsonlColors.kt`:
-   ```kotlin
-   val SPAN_ID: TextAttributesKey = TextAttributesKey.createTextAttributesKey(
-       "JSONL_SPAN_ID", DefaultLanguageHighlighterColors.METADATA
-   )
-   ```
-2. Register it with the Color Scheme page — add an `AttributesDescriptor` in `JsonlColorSettingsPage.kt` and a tag in `getAdditionalHighlightingTagToDescriptorMap()`.
-3. Have the Formatter emit a range for the token (add a new `IntRange?` on `FormattedLine`, populate it in `Formatter`).
-4. Teach `HighlightSpanBuilder.collectLineSpans` to emit a span for the new range with the new key.
-
-No markup-model changes needed — the sidecar highlighter picks up the new span type automatically.
-
-### Adding support for a new log format
-
-Usually a pure configuration change: **Settings → Tools → JSONL Log Viewer → Field mapping**. Use dotted paths. See the [Field-mapping reference](usage#field-mapping-reference) for canonical examples.
-
-If your format has exotic semantics (timestamps in an unusual encoding, severity as a number rather than a string, etc.), you may need to extend `LogEntryParser.parseInstant` or introduce an alias table for severity levels. Both are localized to small pieces of `LogEntryParser.kt`.
-
-### Adding a new per-file state field
-
-1. Add a `var` to `JsonlFileEditorState` with a default value. Primitives and enums serialize natively; other types need a `readState`/`writeState` contribution.
-2. Write the value in `JsonlEditor.getState()`, apply it in `JsonlEditor.setState()`.
-3. Add attribute serialization in `JsonlSplitEditorProvider.writeState` / `readState`.
-
-### Adding a new settings toggle
-
-1. Add a `var` to `JsonlSettings.State` with a default.
-2. Expose in `JsonlConfigurable.createPanel()` (one-line `row { checkBox(...).bindSelected(state::name) }`).
-3. Consume wherever relevant — usually in `HighlightSpanBuilder` (if it affects rendering) or `JsonlRebuilder`'s use of `FormatConfig`.
+For step-by-step recipes — adding a filter predicate, a highlight colour, support for a new log format, a per-file state field, or a settings toggle — see the [Extension points reference](development/extending).
 
 ## Incremental-compile gotcha
 

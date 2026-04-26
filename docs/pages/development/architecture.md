@@ -1,10 +1,11 @@
 ---
 layout: default
 title: Architecture
-nav_exclude: true
+parent: Development
+nav_order: 1
 ---
 
-> Technical deep-dive. Linked from the [Developer guide](development#architecture-reference). Not intended as a user-facing page.
+> Technical deep-dive into the plugin's internals. Linked from the [Developer guide](../development#architecture).
 
 ## Design principles
 
