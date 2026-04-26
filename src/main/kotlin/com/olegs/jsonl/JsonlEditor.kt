@@ -692,6 +692,32 @@ class JsonlEditor(
         }
     }
 
+    // Snapshot of which underlying entry the user is parked on, taken before a
+    // rebuild so we can restore the caret onto the same entry afterward (or onto
+    // the next surviving entry when this one was filtered out).
+    private fun currentDrivingRawIdx(): Int? {
+        val driving = drivingEditor() ?: return null
+        val line = driving.caretModel.logicalPosition.line
+        return formattedToRawLine.getOrNull(line)
+    }
+
+    private fun restoreCaretToRawIdx(rawIdx: Int?) {
+        if (rawIdx == null) return
+        val mapping = formattedToRawLine
+        if (mapping.isEmpty()) return
+        // mapping is sorted ascending (kept entries iterated in source order).
+        // Use the exact match if present, otherwise the insertion point — i.e.
+        // the first surviving entry whose raw index is >= the old one.
+        val found = mapping.binarySearch(rawIdx)
+        val targetLine = if (found >= 0) found else (-found - 1).coerceAtMost(mapping.size - 1)
+        listOf(formattedEditor, filteredRawEditor).forEach { editor ->
+            val safe = targetLine.coerceAtMost(editor.document.lineCount.coerceAtLeast(1) - 1)
+            val pos = LogicalPosition(safe, 0)
+            editor.caretModel.moveToLogicalPosition(pos)
+            editor.scrollingModel.scrollTo(pos, com.intellij.openapi.editor.ScrollType.MAKE_VISIBLE)
+        }
+    }
+
     private fun componentFor(pane: Pane): JComponent? = when (pane) {
         // Always show the synthetic viewer. The real textEditor stays alive in the
         // background for document listening + FileDocumentManager plumbing, but
@@ -706,6 +732,10 @@ class JsonlEditor(
     private fun inspectVisible(): Boolean = rightPane == Pane.INSPECT
 
     private fun rebuildFromSource(source: String) {
+        // Captured before formattedToRawLine is overwritten so we can re-anchor
+        // the caret onto the same entry once the new mapping is in place.
+        val oldRawIdx = currentDrivingRawIdx()
+
         val cfg = JsonlSettings.getInstance().config
         val result = JsonlRebuilder.rebuild(source, session, cfg)
         allTargets = result.allTargets
@@ -734,6 +764,7 @@ class JsonlEditor(
             filteredRawDoc.setText(result.rawLines.joinToString("\n"))
         }
         applySoftWrap()
+        restoreCaretToRawIdx(oldRawIdx)
         toolbar?.updateActionsAsync()
     }
 
