@@ -44,6 +44,7 @@ class JsonlSettings : PersistentStateComponent<JsonlSettings.State> {
         var scrollToEndOnOpen: Boolean = false,
         var autoResizeInspect: Boolean = false,
         var softWrapInspect: Boolean = true,
+        var softWrapFormatted: Boolean = true,
 
         // Field mapping — dotted JSON paths, one per semantic slot.
         var fieldTimestampPath: String = FieldMapping.DEFAULT.timestampPath,

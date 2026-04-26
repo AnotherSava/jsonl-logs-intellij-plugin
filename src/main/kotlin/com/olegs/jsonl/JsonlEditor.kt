@@ -148,6 +148,7 @@ class JsonlEditor(
     private val refreshAlarm = Alarm(Alarm.ThreadToUse.SWING_THREAD, this)
     private val filterAlarm = Alarm(Alarm.ThreadToUse.SWING_THREAD, this)
     private val inspectOverlay: InspectOverlay by lazy { InspectOverlay() }
+    private var formattedSoftWrapIndent: Int = 0
 
     init {
         textEditor.editor.settings.isRightMarginShown = false
@@ -323,12 +324,37 @@ class JsonlEditor(
 
     private fun buildInspectOverlayLayer(left: JComponent): JComponent {
         val container = JPanel(null)
-        container.layout = InspectOverlayLayout(left, inspectOverlay)
+        val leftEditor = when (leftPane) {
+            Pane.FORMATTED -> formattedEditor
+            Pane.RAW -> filteredRawEditor
+            else -> null
+        }
+        val divider = OverlayDivider()
+        container.layout = InspectOverlayLayout(left, inspectOverlay, divider, leftEditor)
         container.add(left)
         container.add(inspectOverlay)
-        container.setComponentZOrder(inspectOverlay, 0)
+        container.add(divider)
+        // Frontmost first: divider draws over overlay + scrollbar gutter; overlay
+        // draws over the editor; the editor sits at the back.
+        container.setComponentZOrder(divider, 0)
+        container.setComponentZOrder(inspectOverlay, 1)
         inspectOverlay.refreshCornerIcon()
         return container
+    }
+
+    // 1px horizontal line drawn at the overlay's far edge that extends past the
+    // overlay's right edge into the editor's vertical-scrollbar gutter, so the
+    // overlay's visual frame reads as continuous across the full pane width
+    // even though the overlay itself stops short of the scrollbar.
+    // Mouse-transparent (contains() returns false) — events fall through to the
+    // scrollbar underneath, keeping it draggable.
+    private inner class OverlayDivider : JComponent() {
+        init { isOpaque = false }
+        override fun paintComponent(g: Graphics) {
+            g.color = JBColor.GRAY
+            g.drawLine(0, 0, width - 1, 0)
+        }
+        override fun contains(x: Int, y: Int): Boolean = false
     }
 
     private fun loadOverlayCorner(): OverlayCorner {
@@ -356,30 +382,51 @@ class JsonlEditor(
     private inner class InspectOverlayLayout(
         private val left: JComponent,
         private val overlay: InspectOverlay,
+        private val divider: JComponent,
+        private val leftEditor: Editor?,
     ) : LayoutManager {
         override fun addLayoutComponent(name: String?, comp: Component?) {}
         override fun removeLayoutComponent(comp: Component?) {}
         override fun preferredLayoutSize(parent: Container): Dimension = parent.size
         override fun minimumLayoutSize(parent: Container): Dimension = Dimension(0, 0)
 
+        // Reserve the left editor's vertical scrollbar gutter on the right so the
+        // overlay never sits on top of the scrollbar (where it would intercept
+        // drag events). preferredSize is used in case the bar is currently
+        // hidden — we want a stable position regardless.
+        private fun scrollbarReserve(): Int {
+            val sb = (leftEditor as? EditorEx)?.scrollPane?.verticalScrollBar ?: return 0
+            return sb.preferredSize.width.takeIf { it > 0 } ?: JBUI.scale(14)
+        }
+
         override fun layoutContainer(parent: Container) {
             val w = parent.width
             val h = parent.height
             left.setBounds(0, 0, w, h)
 
-            val maxW = (w - OVERLAY_INSET_PX).coerceAtLeast(1)
+            val sbReserve = scrollbarReserve()
+            val maxW = (w - OVERLAY_INSET_PX - sbReserve).coerceAtLeast(1)
             val maxH = (h - OVERLAY_INSET_PX).coerceAtLeast(1)
             val requested = loadOverlaySize(w, h)
             val ow = minOf(requested.width, maxW).coerceAtLeast(minOf(OVERLAY_MIN_W, maxW))
             val oh = minOf(requested.height, maxH).coerceAtLeast(minOf(OVERLAY_MIN_H, maxH))
             if (ow != requested.width || oh != requested.height) saveOverlaySize(ow, oh)
 
-            val ox = (w - ow - OVERLAY_INSET_PX).coerceAtLeast(0)
-            val oy = when (loadOverlayCorner()) {
+            val ox = (w - ow - OVERLAY_INSET_PX - sbReserve).coerceAtLeast(0)
+            val corner = loadOverlayCorner()
+            val oy = when (corner) {
                 OverlayCorner.TOP -> OVERLAY_INSET_PX
                 OverlayCorner.BOTTOM -> (h - oh - OVERLAY_INSET_PX).coerceAtLeast(0)
             }
             overlay.setBounds(ox, oy, ow, oh)
+
+            // Divider sits at the overlay's far horizontal edge and extends right
+            // through the scrollbar gutter to the parent's right edge.
+            val dividerY = when (corner) {
+                OverlayCorner.TOP -> oy + oh
+                OverlayCorner.BOTTOM -> oy - 1
+            }
+            divider.setBounds(ox, dividerY, w - ox, 1)
         }
     }
 
@@ -400,21 +447,33 @@ class JsonlEditor(
         }
         private val editorComponent: JComponent = inspectEditor.component
         private val gripComponent = ResizeGrip()
+        private val leftEdgeHandle = LeftEdgeHandle()
+        // The overlay only draws its own LEFT vertical edge. The horizontal line
+        // along the opposite-anchor side is drawn by OverlayDivider so it can
+        // extend past the overlay into the scrollbar gutter. Right edge is open
+        // so the scrollbar gutter beside the overlay reads as continuous space.
+        private val overlayBorder: Border =
+            BorderFactory.createMatteBorder(0, OVERLAY_BORDER_PX, 0, 0, JBColor.GRAY)
         private var startSize: Dimension = Dimension()
         private var startPointOnScreen: Point = Point()
 
         init {
             isOpaque = true
             background = JBColor.PanelBackground
-            border = borderForCorner(loadOverlayCorner())
+            border = overlayBorder
             add(cornerButton)
             add(closeButton)
             add(editorComponent)
             add(gripComponent)
-            // Grip + chrome buttons on top so they intercept mouse events over the editor.
-            setComponentZOrder(gripComponent, 0)
-            setComponentZOrder(closeButton, 1)
-            setComponentZOrder(cornerButton, 2)
+            add(leftEdgeHandle)
+            // Resize affordances + chrome buttons on top so they intercept mouse
+            // events over the editor. Edge handle and grip are mutually exclusive
+            // by visibility (auto-resize vs manual), so their relative z-order is
+            // immaterial — both kept frontmost for safety.
+            setComponentZOrder(leftEdgeHandle, 0)
+            setComponentZOrder(gripComponent, 1)
+            setComponentZOrder(closeButton, 2)
+            setComponentZOrder(cornerButton, 3)
             cornerButton.addMouseListener(object : MouseAdapter() {
                 override fun mouseClicked(e: MouseEvent) {
                     flipCorner()
@@ -444,13 +503,23 @@ class JsonlEditor(
                     val maxH = parentBox.height.coerceAtLeast(1)
                     val newW = rawW.coerceIn(minOf(OVERLAY_MIN_W, maxW), maxW)
                     val newH = rawH.coerceIn(minOf(OVERLAY_MIN_H, maxH), maxH)
-                    saveOverlaySize(newW, newH)
+                    if (JsonlSettings.getInstance().config.autoResizeInspect) {
+                        // Auto-resize owns height; persisting newH here would race
+                        // the autoResizeOverlayIfEnabled callback and oscillate.
+                        // The width change still feeds back into auto-fit because
+                        // wrap point depends on width.
+                        props.setValue(KEY_OVERLAY_W, newW, -1)
+                    } else {
+                        saveOverlaySize(newW, newH)
+                    }
                     parentBox.revalidate()
                     parentBox.repaint()
                 }
             }
             gripComponent.addMouseListener(resizeAdapter)
             gripComponent.addMouseMotionListener(resizeAdapter)
+            leftEdgeHandle.addMouseListener(resizeAdapter)
+            leftEdgeHandle.addMouseMotionListener(resizeAdapter)
             // Width changes alter the soft-wrap point, which can change the visual
             // line count. Re-run auto-resize so the height tracks the new wrap.
             // Height-only changes are filtered out to avoid feedback loops.
@@ -483,19 +552,24 @@ class JsonlEditor(
             gripComponent.cursor = Cursor.getPredefinedCursor(
                 if (corner == OverlayCorner.TOP) Cursor.SW_RESIZE_CURSOR else Cursor.NW_RESIZE_CURSOR
             )
+            // In auto-resize mode the height is owned by autoResizeOverlayIfEnabled,
+            // so the diagonal grip is misleading — hide it and present a left-edge
+            // handle that constrains the drag to width only. In manual mode the
+            // grip stays (two-axis drag) and the edge handle disappears.
+            val autoResize = JsonlSettings.getInstance().config.autoResizeInspect
+            gripComponent.isVisible = !autoResize
+            leftEdgeHandle.setBounds(0, 0, JBUI.scale(LEFT_EDGE_HANDLE_PX), height)
+            leftEdgeHandle.isVisible = autoResize
         }
 
         fun refreshCornerIcon() {
-            val corner = loadOverlayCorner()
-            cornerButton.icon = iconForCorner(corner)
-            border = borderForCorner(corner)
+            cornerButton.icon = iconForCorner(loadOverlayCorner())
         }
 
         fun flipCorner() {
             val next = if (loadOverlayCorner() == OverlayCorner.TOP) OverlayCorner.BOTTOM else OverlayCorner.TOP
             saveOverlayCorner(next)
             cornerButton.icon = iconForCorner(next)
-            border = borderForCorner(next)
             parent?.revalidate()
             parent?.repaint()
         }
@@ -503,15 +577,6 @@ class JsonlEditor(
         private fun iconForCorner(corner: OverlayCorner): Icon =
             if (corner == OverlayCorner.TOP) ChromeIcon(ChromeIconType.DOWN) else ChromeIcon(ChromeIconType.UP)
 
-        private fun borderForCorner(corner: OverlayCorner): Border = when (corner) {
-            // Horizontal anchor side flush (0); other three sides 1px.
-            OverlayCorner.TOP -> BorderFactory.createMatteBorder(
-                0, OVERLAY_BORDER_PX, OVERLAY_BORDER_PX, OVERLAY_BORDER_PX, JBColor.GRAY,
-            )
-            OverlayCorner.BOTTOM -> BorderFactory.createMatteBorder(
-                OVERLAY_BORDER_PX, OVERLAY_BORDER_PX, 0, OVERLAY_BORDER_PX, JBColor.GRAY,
-            )
-        }
     }
 
     private enum class ChromeIconType { DOWN, UP, CLOSE }
@@ -560,6 +625,17 @@ class JsonlEditor(
             } finally {
                 g2.dispose()
             }
+        }
+    }
+
+    // Thin invisible strip pinned to the overlay's left edge that surfaces the
+    // border as a width-resize handle. Used only in auto-resize mode, where the
+    // corner grip is hidden because vertical drag has no effect.
+    private inner class LeftEdgeHandle : JPanel() {
+        init {
+            isOpaque = false
+            cursor = Cursor.getPredefinedCursor(Cursor.W_RESIZE_CURSOR)
+            toolTipText = "Drag to resize width"
         }
     }
 
@@ -638,12 +714,26 @@ class JsonlEditor(
 
         val formattedText = result.structuredLines.joinToString("\n") { it.text }
         val spans = HighlightSpanBuilder.build(result.structuredLines, cfg)
+        // Custom soft-wrap indent: only meaningful under Alignment.FIELDS, where
+        // every line's first '=' lands at the same column, so the single
+        // editor-wide indent IntelliJ exposes is exact for every line. Under
+        // other alignments fall back to the default (continuation at column 0).
+        // The value's start column is `eqStart + 1`, but IntelliJ paints a
+        // soft-wrap indicator glyph (~1 column wide) at the head of every
+        // continuation line that pushes the actual text right by one column —
+        // so we set the indent to `eqStart` to compensate.
+        formattedSoftWrapIndent = if (cfg.alignment == Alignment.FIELDS) {
+            result.structuredLines
+                .firstOrNull { it.equalsRanges.isNotEmpty() }
+                ?.equalsRanges?.first()?.last ?: 0
+        } else 0
 
         ApplicationManager.getApplication().runWriteAction {
             formattedDoc.setText(formattedText)
             formattedDoc.putUserData(JSONL_HIGHLIGHT_SPANS, spans)
             filteredRawDoc.setText(result.rawLines.joinToString("\n"))
         }
+        applySoftWrap()
         toolbar?.updateActionsAsync()
     }
 
@@ -725,7 +815,11 @@ class JsonlEditor(
     }
 
     private fun applySoftWrap() {
-        inspectEditor.settings.isUseSoftWraps = JsonlSettings.getInstance().config.softWrapInspect
+        val cfg = JsonlSettings.getInstance().config
+        inspectEditor.settings.isUseSoftWraps = cfg.softWrapInspect
+        formattedEditor.settings.isUseSoftWraps = cfg.softWrapFormatted
+        formattedEditor.settings.isUseCustomSoftWrapIndent = formattedSoftWrapIndent > 0
+        formattedEditor.settings.customSoftWrapIndent = formattedSoftWrapIndent
     }
 
     private class StaticLabelAction(private val text: String) : AnAction(), CustomComponentAction {
@@ -866,6 +960,7 @@ class JsonlEditor(
                 add(settingToggle("Scroll to latest on open") { it::scrollToEndOnOpen })
                 add(settingToggle("Auto-resize inspect height") { it::autoResizeInspect })
                 add(settingToggle("Soft wrap inspect text") { it::softWrapInspect })
+                add(settingToggle("Soft wrap formatted text") { it::softWrapFormatted })
                 addSeparator()
                 add(object : AnAction("Open full settings…") {
                     override fun actionPerformed(e: AnActionEvent) {
@@ -1005,6 +1100,7 @@ class JsonlEditor(
         const val OVERLAY_MIN_H = 140
         const val OVERLAY_GRIP_PX = 16
         const val OVERLAY_BORDER_PX = 1
+        const val LEFT_EDGE_HANDLE_PX = 4
         // Reserved bottom slack matching a horizontal scrollbar's height — kept
         // constant (and decoupled from the editor's live scrollbar state) so the
         // auto-resized height doesn't oscillate between content with and without

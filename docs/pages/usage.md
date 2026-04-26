@@ -48,7 +48,7 @@ When the right panel is set to Inspect, the left pane fills the editor full-widt
 
 The overlay's chrome lives in the top-right corner: a corner-toggle (↓ / ↑) flips the anchor between top-right and bottom-right, and a close button (×) hides the overlay (equivalent to the toolbar's "Right panel: Off"). Clicking the toolbar's **Inspect** button while it's already selected also flips the corner.
 
-The free corner of the overlay (bottom-left when anchored top, top-left when anchored bottom) carries a resize grip — drag it to grow or shrink the overlay; size and corner are persisted across sessions.
+The free corner of the overlay (bottom-left when anchored top, top-left when anchored bottom) carries a resize grip — drag it diagonally to grow or shrink the overlay. When **Auto-resize inspect height** is on, the height is owned by the overlay (it auto-fits the current entry), so the corner grip is hidden and the overlay's left edge becomes a width-only resize handle instead. Size and corner are persisted across sessions.
 
 The line-index ↔ raw-line mapping works correctly across filters: if you filter to 8 `ERROR` entries out of 500 lines, clicking on "Formatted line 3" shows the pretty JSON of the 3rd matching entry — not raw line 3.
 
@@ -112,6 +112,7 @@ The gear icon at the very left of the toolbar opens a popup containing:
 - Scroll to latest on open
 - Auto-resize inspect height (auto-fit the inspect overlay's height to the current entry)
 - Soft wrap inspect text (wrap long JSON values to the overlay's width instead of overflowing)
+- Soft wrap formatted text (wrap long formatted log lines to the editor width)
 - Four Align radio items (None / Targets / Messages / Fields)
 - **Open full settings…** — opens the Settings dialog directly at the JSONL Log Viewer page
 
@@ -157,6 +158,7 @@ All padding widths are computed from the **filtered subset** so alignment stays 
 | Scroll to the latest entry when a `.jsonl` file is opened | **off** | Move caret to the last non-blank line on open |
 | Auto-resize inspect height | **off** | When the inspect overlay is shown, recompute its vertical size on every caret move so the current entry's pretty-printed JSON fits exactly. Width and corner stay user-controlled |
 | Soft wrap inspect text | **on** | Wrap long JSON values inside the inspect overlay to its width instead of overflowing. When auto-resize is on, wrapped continuations count toward the height so wrapped lines stay fully visible |
+| Soft wrap formatted text | **on** | Wrap long formatted log lines to the editor width. Under **Align = Fields** (where every line's first `=` lands at the same column), wrap continuations align with the column where the first field-value begins; under other alignments, continuations start at column 0 |
 
 ### Field mapping
 
