@@ -1,10 +1,7 @@
 ---
 layout: default
-title: JSONL Log Viewer
----
-
-[Home](.) | [Usage](pages/usage) | [Development](pages/development)
-
+title: Home
+nav_order: 1
 ---
 
 *An IntelliJ Platform plugin that renders `.jsonl` (JSON-per-line) structured log files as human-readable log lines in a side-by-side split view, with filters, highlighting, and a JSON inspector for the current entry.*

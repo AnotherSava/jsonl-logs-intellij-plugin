@@ -1,10 +1,7 @@
 ---
 layout: default
 title: Usage
----
-
-[Home](..) | [Usage](usage) | [Development](development)
-
+nav_order: 2
 ---
 
 The JSONL Log Viewer plugin adds a two-pane split editor for every `.jsonl` file you open in any IntelliJ-based IDE. The left pane shows human-readable formatted log lines, the right pane inspects the JSON of the entry at the caret, and a toolbar on top gives you pane selectors, filters, and live stats.

@@ -1,4 +1,12 @@
 title: JSONL Log Viewer
 description: An IntelliJ Platform plugin that renders .jsonl structured log files as human-readable log lines in a side-by-side split view
-theme: jekyll-theme-hacker
+remote_theme: just-the-docs/just-the-docs
 baseurl: /jsonl-logs-intellij-plugin
+plugins:
+  - jekyll-remote-theme
+color_scheme: light
+search_enabled: true
+heading_anchors: true
+
+exclude:
+  - plans/

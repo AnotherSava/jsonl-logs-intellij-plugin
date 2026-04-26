@@ -1,10 +1,7 @@
 ---
 layout: default
 title: Architecture
----
-
-[Home](..) | [Usage](usage) | [Development](development)
-
+nav_exclude: true
 ---
 
 > Technical deep-dive. Linked from the [Developer guide](development#architecture-reference). Not intended as a user-facing page.

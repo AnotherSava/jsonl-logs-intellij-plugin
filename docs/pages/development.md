@@ -1,10 +1,7 @@
 ---
 layout: default
 title: Development
----
-
-[Home](..) | [Usage](usage) | [Development](development)
-
+nav_order: 3
 ---
 
 ## Setup
