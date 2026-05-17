@@ -10,7 +10,7 @@ has_children: true
 ### Prerequisites
 
 - **JDK 17** or newer (the IntelliJ Platform Gradle Plugin 2.x requires 17+).
-- **Gradle 8.10+**. The wrapper task in `build.gradle.kts` targets 8.10.2 by default; run `gradle wrapper` to generate the matching wrapper files.
+- **Gradle 9.0+**. The wrapper task in `build.gradle.kts` targets 9.0.0 by default; run `gradle wrapper` to generate the matching wrapper files.
 
 The first build downloads the target IntelliJ IDEA Community distribution (~1 GB) via the IntelliJ Platform Gradle Plugin. Subsequent builds reuse the cached copy.
 
