@@ -5,6 +5,3 @@ build/
 out/
 .kotlin/
 .intellijPlatform/
-
-# Local convenience scripts (not committed)
-scripts/
