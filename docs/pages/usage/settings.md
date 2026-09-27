@@ -57,6 +57,11 @@ All padding widths are computed from the **filtered subset** so alignment stays 
 | Setting | Default | Effect |
 |---|---|---|
 | Scroll to the latest entry when a `.jsonl` file is opened | **off** | Move caret to the last non-blank line on open |
+
+Three more behaviour toggles live only in the [gear popup](#gear-popup-quick-toggles); the Settings page does not show them:
+
+| Setting | Default | Effect |
+|---|---|---|
 | Auto-resize inspect height | **off** | When the inspect overlay is shown, recompute its vertical size on every caret move so the current entry's pretty-printed JSON fits exactly. Width and corner stay user-controlled |
 | Soft wrap inspect text | **on** | Wrap long JSON values inside the inspect overlay to its width instead of overflowing. When auto-resize is on, wrapped continuations count toward the height so wrapped lines stay fully visible |
 | Soft wrap formatted text | **on** | Wrap long formatted log lines to the editor width. Under **Align = Fields** (where every line's first `=` lands at the same column), wrap continuations align with the column where the first field-value begins; under other alignments, continuations start at column 0 |

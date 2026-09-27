@@ -212,7 +212,7 @@ data class State(
     // display toggles (7 booleans)
     // layout: Alignment
     // formatting: timestampDecimals: Int
-    // behaviour: scrollToEndOnOpen: Boolean
+    // behaviour: scrollToEndOnOpen, autoResizeInspect, softWrapInspect, softWrapFormatted (4 booleans)
     // field mapping (5 strings)
 )
 ```
@@ -250,15 +250,16 @@ The `FileEditor` shell. Owns:
 - One `Alarm` for debouncing filter input (200 ms) and another for debouncing document change rebuilds (100 ms).
 - A third alarm ticking every 30 s to refresh the "most recent" relative time so it walks forward without a document edit.
 
-Caret listeners on all three viewer editors keep Inspect pane in sync with the driving pane (formatted pane if visible, else filtered-raw).
+Caret listeners on the formatted and filtered-raw viewers, plus the hidden `textEditor`, keep the Inspect overlay in sync with the driving pane (formatted pane if visible, else filtered-raw).
 
 ## Settings persistence matrix
 
 | Key | Scope | Storage |
 |---|---|---|
-| Display toggles, alignment, timestamp decimals, field mapping | Global | `PersistentStateComponent` → `JsonlLogViewerSettings.xml` |
+| Display toggles, alignment, timestamp decimals, behaviour toggles, field mapping | Global | `PersistentStateComponent` → `JsonlLogViewerSettings.xml` |
 | Colors | Per-scheme | IntelliJ Color Scheme system |
 | Pane selection, filters, time display | Per-file | `FileEditorState` → project workspace XML |
+| Inspect overlay width, height and corner | Global | `PropertiesComponent` under `com.olegs.jsonl.inspectOverlay.width`, `.height` and `.corner` |
 | Splitter proportion | Global (by key) | `PropertiesComponent` under `JsonlEditor.splitter.proportion` |
 | Default pane / time display for first-open files | Global | `PropertiesComponent` under `com.olegs.jsonl.{leftPane|rightPane|timeDisplay}` |
 
