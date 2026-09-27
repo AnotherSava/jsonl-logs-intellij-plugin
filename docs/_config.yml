@@ -1,6 +1,7 @@
 title: JSONL Log Viewer
 description: An IntelliJ Platform plugin that renders .jsonl structured log files as human-readable log lines in a side-by-side split view
-remote_theme: just-the-docs/just-the-docs
+# Pinned to a release tag: without an @ref the theme resolves to its default branch on every Pages rebuild.
+remote_theme: just-the-docs/just-the-docs@v0.12.0
 baseurl: /jsonl-logs-intellij-plugin
 plugins:
   - jekyll-remote-theme

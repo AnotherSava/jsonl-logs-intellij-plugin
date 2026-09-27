@@ -1,0 +1,5 @@
+# Gradle wrapper: the shell script needs LF, the batch file CRLF (cmd.exe misreads labels in an
+# LF-only batch file), and the wrapper jar is binary.
+/gradlew text eol=lf
+*.bat text eol=crlf
+*.jar binary

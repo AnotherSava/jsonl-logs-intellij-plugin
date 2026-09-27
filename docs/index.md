@@ -45,7 +45,7 @@ the plugin displays it as:
 
 ## Install
 
-Build the plugin from source — see the [Developer guide](pages/development) for JDK / Gradle prerequisites and the install-from-disk workflow.
+Build the plugin from source — see the [Developer guide](pages/development) for prerequisites and the install-from-disk workflow.
 
 ## Next steps
 
