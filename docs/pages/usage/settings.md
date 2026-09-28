@@ -25,7 +25,7 @@ All gear-popup toggles and the Settings page share state, so flipping any toggle
 
 **File → Settings → Tools → JSONL Log Viewer**
 
-<a href="../../screenshots/settings.png"><img src="../../screenshots/settings.png" alt="JSONL Log Viewer settings page" width="900"></a>
+<a href="../../screenshots/settings.png"><img src="../../screenshots/settings.png" alt="JSONL Log Viewer settings page" width="1000"></a>
 
 ### Formatted view
 
@@ -49,6 +49,24 @@ Alignment cascade:
 | **Targets** | pads severity label so targets line up |
 | **Messages** | above + pads target block so messages line up |
 | **Fields** | above + pads message text so first `key=value` lines up |
+
+The same entries under each level, with **Soft wrap formatted text** on:
+
+**None**
+
+<a href="../../screenshots/align-none.png"><img src="../../screenshots/align-none.png" alt="Formatted log lines with no padding, so targets and messages start at ragged columns" width="900"></a>
+
+**Targets**
+
+<a href="../../screenshots/align-targets.png"><img src="../../screenshots/align-targets.png" alt="Formatted log lines with the severity label padded, so every target starts in one column" width="900"></a>
+
+**Messages**
+
+<a href="../../screenshots/align-messages.png"><img src="../../screenshots/align-messages.png" alt="Formatted log lines with the target block padded too, so every message starts in one column" width="900"></a>
+
+**Fields**
+
+<a href="../../screenshots/align-fields.png"><img src="../../screenshots/align-fields.png" alt="Formatted log lines with the message padded too, so the first key=value starts in one column and wrapped lines continue under it" width="900"></a>
 
 All padding widths are computed from the **filtered subset** so alignment stays tight regardless of what's currently visible.
 

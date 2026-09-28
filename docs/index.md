@@ -6,7 +6,7 @@ nav_order: 1
 
 *A plugin for every IntelliJ-based IDE (IDEA, PyCharm, WebStorm, Rider, GoLand, CLion, DataGrip, RubyMine, RustRover, PhpStorm) that renders `.jsonl` (JSON-per-line) structured log files in human-readable form, with highly customizable visualization and a range of filters.*
 
-<a href="screenshots/main-large.png"><img src="screenshots/main-large.png" alt="Split editor with formatted log lines on the left and JSON inspector on the right" width="1000"></a>
+<a href="screenshots/main-large.png"><img src="screenshots/main-large.png" alt="Formatted log lines with the Inspect overlay in the top-right corner showing the caret line's JSON" width="1000"></a>
 
 ## Example
 

@@ -11,3 +11,5 @@ heading_anchors: true
 
 exclude:
   - plans/
+  # Raw captures before the frame step: inputs to the screenshots, not pages.
+  - screenshots/raw/

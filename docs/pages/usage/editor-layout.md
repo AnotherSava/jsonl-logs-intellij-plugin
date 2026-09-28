@@ -18,6 +18,8 @@ The editor is a two-pane split. Each pane independently shows one of:
 
 Defaults: **Left = Formatted, Right = Inspect**. Both sides remember your last choice per `.jsonl` file, with a fallback to the last-used-anywhere.
 
+<a href="../../screenshots/raw-formatted.png"><img src="../../screenshots/raw-formatted.png" alt="Editor with raw JSON lines in the left pane and the same entries formatted in the right pane" width="1000"></a>
+
 Pick a side's pane using the icon buttons in the toolbar:
 
 ![Pane selector toolbar](../../screenshots/toolbar-panels.png)

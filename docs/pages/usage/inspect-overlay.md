@@ -9,6 +9,8 @@ When the right panel is set to Inspect, the left pane fills the editor full-widt
 
 The overlay's chrome lives in the top-right corner: a corner-toggle (↓ / ↑) flips the anchor between top-right and bottom-right, and a close button (×) hides the overlay (equivalent to the toolbar's "Right panel: Off"). Clicking the toolbar's **Inspect** button while it's already selected also flips the corner.
 
+<a href="../../screenshots/inspect-overlay.png"><img src="../../screenshots/inspect-overlay.png" alt="Inspect overlay anchored top-right over the formatted pane, showing the pretty-printed JSON of the caret line, the corner toggle and close button at its top-right, and the resize grip at its bottom-left" width="800"></a>
+
 The free corner of the overlay (bottom-left when anchored top, top-left when anchored bottom) carries a resize grip — drag it diagonally to grow or shrink the overlay. When **Auto-resize inspect height** is on, the height is owned by the overlay (it auto-fits the current entry), so the corner grip is hidden and the overlay's left edge becomes a width-only resize handle instead. Size and corner are persisted across sessions.
 
 The line-index ↔ raw-line mapping works correctly across filters: if you filter to 8 `ERROR` entries out of 500 lines, clicking on "Formatted line 3" shows the pretty JSON of the 3rd matching entry — not raw line 3.

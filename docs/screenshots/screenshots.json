@@ -5,18 +5,17 @@
       "files": [
         "main-large.png"
       ],
-      "shows": "JSONL editor at 2853x1428: full plugin toolbar (gear, Left panel Raw/Formatted with Formatted on, Right panel Raw/Formatted/Inspect/Off with Inspect on, Level Debug, Target (All), empty Filter, Total entries: 163, First entry: 5 hours 11 minutes ago, Most recent: less than a minute ago). Below it, formatted Rust-tracing log lines 91-132 from 2026-04-25 (usage_limits/http_server/log_watcher/notifications), line 115 caret-highlighted, and the Inspect overlay in the top-right corner showing that entry's pretty-printed JSON (\"watching transcript\", target ai_agent_dashboard_lib::log_watcher).",
+      "shows": "The whole editor island, rounded corners included, around a 1902x952 logical JSONL editor: Formatted pane of a five-hour dashboard session (lines 145-185, Level Debug, Align Fields, soft wrap off) with the Inspect overlay top-right on the caret line, an intellij-jsonl-extension 'watching transcript' entry; toolbar reads Total entries 189 and relative first/most recent times",
       "policy": "auto",
-      "verifiedAt": "8536111",
+      "verifiedAt": "at-capture",
       "capture": {
+        "command": "python docs/screenshots/capture/capture.py launch main-hero stop",
         "steps": [
-          "Open a .jsonl produced by a Rust app using tracing's JSON subscriber in an IntelliJ-platform IDE (dark theme, e.g. the AI agent dashboard widget log). Each line should look like {\"timestamp\":\"2026-04-25T12:05:27.786319Z\",\"level\":\"DEBUG\",\"fields\":{\"message\":\"watching transcript\",\"path\":\"...\",\"chat_id\":\"...\"},\"target\":\"ai_agent_dashboard_lib::log_watcher\"}. Use about 163 entries with targets usage_limits, http_server, log_watcher and notifications, and messages like 'refresh request denied (inside floor)', 'event -> set', 'usage poll success', 'widget starting'.",
-          "In the plugin toolbar, set Left panel to Formatted and Right panel to Inspect, so the Inspect overlay floats in the top-right corner (its corner button shows a down arrow).",
-          "Set Level to Debug and Target to (All), and leave Filter empty. Timestamps should show relative time: first entry about 5 hours ago, most recent under a minute ago.",
-          "In the gear menu, turn soft wrap for the inspect pane on (the long path value wraps) and auto-resize inspect off (the bottom-left resize grip is visible). Keep italic target and Fields-level alignment, so the k=v fields line up in one column.",
-          "Scroll the formatted pane so lines 91-132 are visible and put the caret on line 115, the log_watcher 'watching transcript' entry for intellij-jsonl-extension, so the overlay shows its JSON (10 lines).",
-          "Widen the overlay to about 35% of the editor width and let its height fit the 10-line JSON.",
-          "Capture at 150% scaling (144 DPI) and crop tightly to the plugin's editor component: from the toolbar's gear icon at top-left down to the bottom of the editor, with no IDE tabs, tool windows or window chrome. The result is 2853x1428."
+          "Everything is staged by docs/screenshots/capture/capture.py in the runIdeForScreenshots sandbox (IntelliJ IDEA 2026.1, Islands Dark, Dark editor scheme, device-pixel ratio 1.5, editor tabs hidden)",
+          "Subject: fixtures/dashboard-session.jsonl, a synthetic five-hour session moved at capture time to end 20 s before now, so the toolbar reads 'First entry: 5 hours ... ago' and 'Most recent: less than a minute ago'. It replaced the previous frame's real session, which carried a user path and prompt text",
+          "Left = Formatted, Right = Inspect with the overlay 560x260 logical at the top corner, Level Debug through the editor's own state, Align Fields, soft wrap formatted off and soft wrap inspect on",
+          "Caret on the last intellij-jsonl-extension 'watching transcript' line, scrolled so it sits 24 lines below the top",
+          "Paint the editor island (EditorsSplitters) in-process, crop to its own one-pixel outline measured off the pixels, and clip the corners to that outline's 15 px radius, the ring outside"
         ]
       }
     },
@@ -25,18 +24,49 @@
       "files": [
         "toolbar-panels.png"
       ],
-      "shows": "Cropped plugin editor toolbar (dark New UI), pane-selector section only. \"Left panel:\" has 3 icon buttons: Raw {}, Formatted (selected) and Inspect. \"Right panel:\" has 4: Raw {}, Formatted (disabled), Inspect (selected) and Off (X).",
+      "shows": "Editor toolbar crop, pane pickers only: Left panel with Raw and Formatted (Formatted selected), Right panel with Raw, Formatted (disabled), Inspect (selected) and Off",
       "policy": "auto",
-      "verifiedAt": "8536111",
+      "verifiedAt": "at-capture",
       "capture": {
+        "command": "python docs/screenshots/capture/capture.py launch toolbar-panels stop",
         "steps": [
-          "Run the plugin in IntelliJ (runIde sandbox) with the dark New UI theme. The toolbar background is RGB (25,26,28), the same as main-large.png, toolbar-filter.png and toolbar-stats.png.",
-          "Open a .jsonl log of Rust tracing JSON lines, each shaped like {\"timestamp\": \"...Z\", \"level\": \"DEBUG\", \"fields\": {\"message\": ..., ...}, \"target\": \"ai_agent_dashboard_lib::usage_limits\"}. The content does not appear in this crop; use the same file as the main-large.png hero shot so the series stays consistent.",
-          "In the editor's toolbar, click the Formatted (lines) icon under \"Left panel:\" and the Inspect icon under \"Right panel:\". This is the default Left = Formatted, Right = Inspect. Formatted then shows as disabled in the Right group.",
-          "Do not hover any button, so no tooltip or hover highlight is captured.",
-          "Take a screenshot at the same display scale as main-large.png (native HiDPI, where the toolbar strip is 54 px tall).",
-          "Crop to the full toolbar height (54 px). Start about 17 px left of the \"Left panel:\" label, after the gear icon. End about 13 px past the Right group's Off (X) button, before \"Level:\". The Left group should now show only 2 buttons (Raw, Formatted), so the crop will be narrower than the old 550 px (roughly 505 px).",
-          "Save over docs/screenshots/toolbar-panels.png."
+          "Everything is staged by docs/screenshots/capture/capture.py in the runIdeForScreenshots sandbox (IntelliJ IDEA 2026.1, Islands Dark, Dark editor scheme, device-pixel ratio 1.5) from fixtures/dashboard-startup.jsonl",
+          "Left = Formatted, Right = Inspect, set through the plugin's stored pane defaults before the file opens",
+          "Paint the JSONL editor in-process and crop the toolbar from midway between the gear and 'Left panel:', with the same margin after Off; each cut through content is then moved inward off any glyph it would cut in two (outline.py clean_cut)"
+        ]
+      }
+    },
+    {
+      "id": "raw-formatted",
+      "files": [
+        "raw-formatted.png"
+      ],
+      "shows": "Whole JSONL editor with Left = Raw and Right = Formatted: raw JSON lines beside the same entries formatted and soft-wrapped, toolbar in absolute-time mode",
+      "policy": "auto",
+      "verifiedAt": "at-capture",
+      "capture": {
+        "command": "python docs/screenshots/capture/capture.py launch raw-formatted stop",
+        "steps": [
+          "Everything is staged by docs/screenshots/capture/capture.py in the runIdeForScreenshots sandbox (IntelliJ IDEA 2026.1, Islands Dark, Dark editor scheme, device-pixel ratio 1.5) from fixtures/dashboard-startup.jsonl",
+          "Left = Raw, Right = Formatted, time display Absolute, editor 1700x480 logical, caret parked on the last line",
+          "Paint the editor island (EditorsSplitters) in-process and crop from its own outline at the top and sides to the top of raw line 16; the top corners are the island's own, clipped to its 15 px radius, and the bottom is a cut kept square; each cut through content is then moved inward off any glyph it would cut in two (outline.py clean_cut)"
+        ]
+      }
+    },
+    {
+      "id": "inspect-overlay",
+      "files": [
+        "inspect-overlay.png"
+      ],
+      "shows": "Inspect overlay anchored top-right over the Formatted pane, showing entry 7 ('watching transcript' with a wrapped path), with corner toggle, close button, resize grip and divider",
+      "policy": "auto",
+      "verifiedAt": "at-capture",
+      "capture": {
+        "command": "python docs/screenshots/capture/capture.py launch inspect-overlay stop",
+        "steps": [
+          "Everything is staged by docs/screenshots/capture/capture.py in the runIdeForScreenshots sandbox (IntelliJ IDEA 2026.1, Islands Dark, Dark editor scheme, device-pixel ratio 1.5) from fixtures/dashboard-startup.jsonl",
+          "Left = Formatted, Right = Inspect, overlay 540x300 logical at the top corner, auto-resize off, soft wrap inspect on, editor 960x520 logical",
+          "Caret on line 7; paint in-process and crop from below the toolbar to the first line boundary 30 px under the divider; each cut through content is then moved inward off any glyph it would cut in two (outline.py clean_cut)"
         ]
       }
     },
@@ -70,11 +100,12 @@
       "capture": {
         "steps": [
           "Build and run the plugin in a sandbox IDE (runIde) that uses the same dark theme as the other screenshots in docs/screenshots.",
-          "Open a .jsonl log in Rust tracing JSON format. Each line is {timestamp, level, target, fields:{message, ...}}, from the AI agent dashboard (target ai_agent_dashboard_lib::...), the same log family as main.png. The file needs hook-event lines whose message is \"event -> set\" with fields client=claude, event=Stop / UserPromptSubmit / Notification and chat_id=intellij-jsonl-extension. It also needs usage_limits lines whose message is \"usage poll success\" with fields five_hour_raw=37.0 seven_day_raw=82.0. In the visible stretch, one usage-poll line sits between runs of event -> set lines.",
+          "Open a .jsonl log in Rust tracing JSON format. Each line is {timestamp, level, target, fields:{message, ...}}, from the AI agent dashboard (target ai_agent_dashboard_lib::...), the same log family as the committed fixtures in docs/screenshots/capture/fixtures/. The file needs hook-event lines whose message is \"event -> set\" with fields client=claude, event=Stop / UserPromptSubmit / Notification and chat_id=intellij-jsonl-extension. It also needs usage_limits lines whose message is \"usage poll success\" with fields five_hour_raw=37.0 seven_day_raw=82.0. In the visible stretch, one usage-poll line sits between runs of event -> set lines.",
           "Show the Formatted pane (Left panel = Formatted). Clear any Level, Target or text filter so the mixed hook-event and usage-poll lines are visible.",
           "In the Formatted pane, drag-select the text \"client=claude event=Stop\" on an \"event -> set ... event=Stop\" line, the fourth visible line in the crop.",
           "Right-click the selection so the viewer popup opens next to it, showing Filter by \"client=claude event=Stop\", a separator, and Copy Ctrl+C. Do not hover any item, so no row is highlighted.",
-          "Crop to a strip about 868x222 px at the same display scale as the original (line pitch about 32 px). The strip covers seven formatted lines. The left crop edge cuts off the gutter, line numbers, timestamp, level and target, so each line starts at its message (\"event -> set\" / \" usage poll success\"). The right edge cuts through the popup's right border, and the bottom edge sits just below the popup."
+          "Crop to a strip about 868x222 px at the same display scale as the original (line pitch about 32 px). The strip covers seven formatted lines. The left crop edge cuts off the gutter, line numbers, timestamp, level and target, so each line starts at its message (\"event -> set\" / \" usage poll success\"). The right edge cuts through the popup's right border, and the bottom edge sits just below the popup.",
+          "Move the right cut inward off the slivers of the next glyphs it keeps: python ~/.claude/skills/docs-relevance/scripts/outline.py docs/screenshots/raw/context-menu-filter.png --sides none --clean right --reach 4 (one column, to 867 px)"
         ]
       }
     },
@@ -89,10 +120,10 @@
       "capture": {
         "steps": [
           "Run the plugin in a sandbox IDE (runIde) with a dark theme (the frame uses a dark New UI-style theme). Keep the default toolbar font and scaling so the strip comes out about 54 px tall.",
-          "Open a Rust tracing JSON .jsonl log, one object per line with timestamp, level, fields{message, five_hour_raw, seven_day_raw} and target, e.g. the ai_agent_dashboard usage_limits poller log also used for main.png. The visible subset must be 75 entries. main.png's session got there with Level: All and Target: aiagent_dashboard_lib::usage_limits, which toolbar-filter.png also shows.",
+          "Open a Rust tracing JSON .jsonl log, one object per line with timestamp, level, fields{message, five_hour_raw, seven_day_raw} and target, e.g. the ai_agent_dashboard usage_limits poller log, the family the committed fixtures in docs/screenshots/capture/fixtures/ come from. The visible subset must be 75 entries. The committed frame's session got there with Level: All and Target: aiagent_dashboard_lib::usage_limits, which toolbar-filter.png also shows.",
           "Pick a file or moment where the earliest visible entry is about 10.5 hours old and the latest about 9 minutes old, so the labels read 'First entry: 10 hours 32 minutes ago' and 'Most recent: 9 minutes ago'.",
           "Leave the timestamp labels in relative mode. If they show absolute dates, click 'First entry' once to toggle.",
-          "Make the editor wide enough that the toolbar shows all three stats labels without the overflow chevron. main.png was too narrow and cut the strip off after 'Total entries'.",
+          "Make the editor wide enough that the toolbar shows all three stats labels without the overflow chevron. A narrower editor cuts the strip off after 'Total entries'.",
           "Keep the pointer off the labels so no 'Click to switch between relative and absolute time' tooltip appears.",
           "Capture the toolbar row and crop to the stats segment only: from just left of 'Total entries' to just right of 'Most recent: ... ago', full toolbar height (860x54 in the current file). Crop at the same scale and height as toolbar-panels.png and toolbar-filter.png so the three strips stay a matched series."
         ]
@@ -103,18 +134,17 @@
       "files": [
         "gear-menu.png"
       ],
-      "shows": "Dark-theme JSONL editor with the gear popup \"JSONL Settings\" open under the toolbar's far-left gear icon (\"Targets\" row hovered, Align = Fields checked). The toolbar is cropped after \"Level: All\" and the start of \"Target\". Behind the popup is the Formatted pane of a Rust tracing log from 2026-04-22 (widget starting ... transcript watch failed), with gutter lines 19-21 visible.",
+      "shows": "Gear popup 'JSONL Settings' open under the toolbar's gear icon, Targets row highlighted, Align = Fields checked, over the Formatted pane of the dashboard startup log (lines 1-22)",
       "policy": "auto",
-      "verifiedAt": "8536111",
+      "verifiedAt": "at-capture",
       "capture": {
+        "command": "python docs/screenshots/capture/capture.py launch gear-menu stop",
         "steps": [
-          "Run IntelliJ IDEA with the New UI dark theme and the JSONL Log Viewer plugin installed from this repo.",
-          "Open a .jsonl file of Rust tracing-subscriber JSON output from the AI agent dashboard. Its targets are ai_agent_dashboard_lib::{usage_limits,http_server,log_watcher,notifications}, and the common prefix is stripped in the view. Line 1 must be the startup sequence: INFO 'widget starting' (no target), then INFO usage_limits 'usage limits poller started', http_server 'http listening', notifications 'notification manager started'. After that come DEBUG rows ('usage poll success', 'event -> set' / 'event -> clear', 'watching transcript') and one ERROR log_watcher 'transcript watch failed' at line 17. The timestamps are local, around 2026-04-22 14:4x-14:5x.",
-          "In the toolbar set Left panel = Formatted and Right panel = Inspect (the Inspect overlay sits off-crop to the right). Set Level = All and Target = (All), and leave the filter empty.",
-          "Settings: turn on all seven rendering toggles, set Align = Fields, and turn Scroll to latest on open on. Decide which state to show for Auto-resize inspect height, Soft wrap inspect text and Soft wrap formatted text, which now appear in the popup.",
-          "Scroll the Formatted pane to line 1 so that rows 1-21 are visible.",
-          "Click the gear icon at the far left of the editor toolbar to open the 'JSONL Settings' popup. Hover the 'Targets' row so it shows highlighted.",
-          "Crop from the top-left corner of the editor toolbar (gear icon) to just past the 'Level: All' combo and the start of 'Target'. Vertically, crop down to line 21 of the Formatted pane, so the whole popup is in frame along with the left part of the formatted log and the gutter numbers below the popup. The old crop was about 907x736 px; the popup will now be taller because of the three extra toggles."
+          "Everything is staged by docs/screenshots/capture/capture.py in the runIdeForScreenshots sandbox (IntelliJ IDEA 2026.1, Islands Dark, Dark editor scheme, device-pixel ratio 1.5) from fixtures/dashboard-startup.jsonl",
+          "Subject: the dashboard startup sequence, 2026-04-22 14:41 onwards, scrolled to line 1 with the caret parked on the last line",
+          "Settings: all seven rendering toggles on, Align = Fields, Scroll to latest on open on, Soft wrap formatted text off (wrapped continuations would sit outside the crop and read as blank rows)",
+          "Takes over the screen for about 15 seconds: raises the sandbox with the shared shutter, opens the popup by clicking the gear button in-process, highlights Targets, and reads the region off the desktop so Windows draws the popup's border and shadow",
+          "Framing: a plain rectangle cut out of the editor, starting the smallest offset inside the island's rounded top-left corner that leaves no backdrop in frame (4 px, measured off an in-process paint of the island), so the gear icon and every line number stay whole; a square frame goes outside; the right and bottom cuts are then moved inward off any glyph they would cut in two (outline.py clean_cut), the right one no closer than 4 px to the Level combo"
         ]
       }
     },
@@ -123,17 +153,38 @@
       "files": [
         "settings.png"
       ],
-      "shows": "IntelliJ Settings dialog at Tools > JSONL Log Viewer (dark theme): the plugin's Configurable page with its Formatted view, Behaviour, Field mapping and Colours groups at default values (Align = Targets, decimals 0, paths timestamp/level/target/fields.message/fields), next to the IDE's Settings tree with Tools expanded and \"JSONL Log Viewer\" selected.",
+      "shows": "The whole IntelliJ Settings dialog, its Windows 11 frame and rounded corners included, at Tools > JSONL Log Viewer (dark theme): the plugin's page with its Formatted view, Behaviour, Field mapping and Colours groups at their defaults (seven toggles on, Align = Targets, decimals 0, Scroll to the latest entry off, paths timestamp/level/target/fields.message/fields), beside the Settings tree with Tools expanded and \"JSONL Log Viewer\" selected; Apply disabled",
       "policy": "auto",
-      "verifiedAt": "8536111",
+      "verifiedAt": "at-capture",
       "capture": {
+        "command": "python docs/screenshots/capture/capture.py launch settings-page stop",
         "steps": [
-          "Open the project in IntelliJ IDEA (dark theme, New UI) with the JSONL Log Viewer plugin installed. The subject does not depend on any .jsonl file being open, since the frame is the Settings dialog only.",
-          "Reset the plugin settings to defaults (all seven Formatted-view checkboxes on, Align = Targets, Timestamp seconds decimals = 0, paths timestamp / level / target / fields.message / fields), then tick 'Scroll to the latest entry when a .jsonl file is opened' to match the frame.",
-          "Open File > Settings (Ctrl+Alt+S), expand Tools in the left tree and select 'JSONL Log Viewer', so the breadcrumb reads 'Tools › JSONL Log Viewer'.",
-          "Leave the search box empty and the Align combo closed. Scroll the right-hand panel to the top so 'Formatted view' is the first group and the Colours comment is just visible at the bottom.",
-          "Size the dialog so the right pane shows every group from Formatted view down to the Colours comment (about 972x896 px at the capture scale), with the left tree showing Appearance & Behavior through Terminal.",
-          "Capture the whole Settings dialog window, title bar and OK/Cancel/Apply footer included, with no desktop around it, and save it as docs/screenshots/settings.png."
+          "Everything is staged by docs/screenshots/capture/capture.py in the runIdeForScreenshots sandbox (IntelliJ IDEA 2026.1, Islands Dark, Dark editor scheme, device-pixel ratio 1.5, no plugin repository, so the Settings tree carries no update badge)",
+          "Every plugin setting reset to its default before the dialog opens, since the page binds to them when it is built",
+          "The dialog is opened in-process at the page's configurable id, sized 1050 logical px wide with a 300 px Settings tree (the same for both Settings shots), and placed on the half of the work area away from the pointer, with the sandbox frame behind it; the height is the least at which the page scrolls no more, plus 12 px, which also shows the whole Settings tree",
+          "Checked in-process before the capture: seven toggles ticked, Align Targets, decimals 0, Scroll to the latest entry off, the five default paths, Apply disabled, neither pane scrolling",
+          "Takes over the screen for about 2 seconds: docs/screenshots/capture/settings-dialog.ps1 runs the docs-relevance shutter's Screen method on the dialog's window handle, which parks the pointer, presses Alt, raises the dialog and reads it off the screen cut to DWM's frame rect, rounded corners and border included; the pointer is put back after",
+          "Framing: Add-WindowFrame keeps the capture as docs/screenshots/raw/<name>, then winframe.py (--kind window --shadow none --ring BDBDBD:1.0, no --grow) keeps the content inside the dialog's own 8 DIP clip and draws the #BDBDBD ring along the real outline; the capture's size is the frame's"
+        ]
+      }
+    },
+    {
+      "id": "alignment-levels",
+      "files": [
+        "align-none.png",
+        "align-targets.png",
+        "align-messages.png",
+        "align-fields.png"
+      ],
+      "shows": "The first eight entries of the Formatted pane alone under Align = None, Targets, Messages and Fields, soft wrap on",
+      "policy": "auto",
+      "verifiedAt": "at-capture",
+      "capture": {
+        "command": "python docs/screenshots/capture/capture.py launch alignment-levels stop",
+        "steps": [
+          "Everything is staged by docs/screenshots/capture/capture.py in the runIdeForScreenshots sandbox (IntelliJ IDEA 2026.1, Islands Dark, Dark editor scheme, device-pixel ratio 1.5) from fixtures/dashboard-startup.jsonl",
+          "Left = Formatted, Right = Off, editor 1100x480 logical, caret parked on the last line",
+          "One paint per Align level, each cropped from below the toolbar to the top of line 9, left of the scrollbar; each cut through content is then moved inward off any glyph it would cut in two (outline.py clean_cut)"
         ]
       }
     },
@@ -142,17 +193,19 @@
       "files": [
         "settings-color-scheme.png"
       ],
-      "shows": "IntelliJ Settings dialog (dark theme) at Editor > Color Scheme > JSONL Log Viewer, Scheme \"Dark\", Level group expanded listing all ten attribute keys, with the plugin's five-line demo preview (INFO/DEBUG/WARN/ERROR/TRACE tracing-style lines dated 2026-04-22 14:31:32-46) below.",
+      "shows": "The whole IntelliJ Settings dialog, its Windows 11 frame and rounded corners included, at Editor > Color Scheme > JSONL Log Viewer (dark theme): Scheme \"Dark\", the ten attribute keys with the Level group expanded and none selected, the plugin's five-line demo (INFO/DEBUG/WARN/ERROR/TRACE lines dated 2026-04-22 14:31:32-46) whole below them, and the Settings tree centred on the selected \"JSONL Log Viewer\" row under a sticky Editor header",
       "policy": "auto",
-      "verifiedAt": "8536111",
+      "verifiedAt": "at-capture",
       "capture": {
+        "command": "python docs/screenshots/capture/capture.py launch settings-color-scheme stop",
         "steps": [
-          "Run the plugin in IntelliJ IDEA (e.g. the runIde sandbox) with the default dark theme (New UI, Dark editor scheme). No .jsonl file needs to be open because the preview is the plugin's built-in demo text, not a file.",
-          "Open Settings (Ctrl+Alt+S) and go to Editor > Color Scheme > JSONL Log Viewer.",
-          "Leave Scheme set to \"Dark\". In the attribute tree, expand the Level group so Debug, Error, Info, Trace and Warn show between Field name and Message. Do not select any attribute, so the right-hand attribute editor stays empty.",
-          "Scroll the left settings tree so the sticky \"Editor\" header shows, with the Color Scheme children from Database down to a partly cut-off TypeScript and the JSONL Log Viewer row highlighted.",
-          "Keep the preview pane showing the five demo lines (2026-04-22 14:31:32 INFO http_server: listening addr=127.0.0.1:9077 through 14:31:46 TRACE http_server: trace span span_id=7f3a). The caret line stays on the first line.",
-          "Size the Settings dialog so the capture is about 1533x1279 px, then capture the whole dialog window: the title bar (\"Settings\" plus the close X) at the top and the ?, OK, Cancel and Apply row at the bottom, with nothing cropped inside the dialog."
+          "Everything is staged by docs/screenshots/capture/capture.py in the runIdeForScreenshots sandbox (IntelliJ IDEA 2026.1, Islands Dark, Dark editor scheme, device-pixel ratio 1.5, no plugin repository, so the Settings tree carries no update badge)",
+          "The dialog is opened in-process at the page's configurable id, sized 1050 logical px wide with a 300 px Settings tree (the same for both Settings shots), and placed on the half of the work area away from the pointer, with the sandbox frame behind it",
+          "Level expanded, no key selected (a selected key blinks its ranges in the demo and fills the attribute editor), caret on the demo's first line",
+          "The page split so the key tree holds its eleven rows with one to spare and the demo its five lines with one to spare; the dialog takes the least height that allows, which is its own minimum, the demo taking what is left",
+          "Checked in-process before the capture: the eleven key rows, none selected, neither the key tree nor the demo scrolling, the demo starting '2026-04-22 14:31:32 INFO  http_server: listening addr=127.0.0.1:9077', scheme Dark, Apply disabled, JSONL Log Viewer in view in the Settings tree",
+          "Takes over the screen for about 2 seconds: docs/screenshots/capture/settings-dialog.ps1 runs the docs-relevance shutter's Screen method on the dialog's window handle, which parks the pointer, presses Alt, raises the dialog and reads it off the screen cut to DWM's frame rect, rounded corners and border included; the pointer is put back after",
+          "Framing: Add-WindowFrame keeps the capture as docs/screenshots/raw/<name>, then winframe.py (--kind window --shadow none --ring BDBDBD:1.0, no --grow) keeps the content inside the dialog's own 8 DIP clip and draws the #BDBDBD ring along the real outline; the capture's size is the frame's"
         ]
       }
     }
