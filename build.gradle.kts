@@ -47,6 +47,34 @@ intellijPlatform {
     buildSearchableOptions = false
 }
 
+// Sandbox the documentation screenshots are captured from (docs/screenshots/capture/). It runs the
+// IDE release the published shots show, with JetBrains' robot server so the capture scripts can
+// stage state and paint components over HTTP instead of driving the mouse. Its plugin repository
+// points at a closed local port: with no marketplace to ask, the Settings tree shows no update count
+// on Plugins, and nothing a shot shows depends on the network.
+val runIdeForScreenshots by intellijPlatformTesting.runIde.registering {
+    type = IntelliJPlatformType.IntellijIdea
+    version = "2026.1"
+    task {
+        jvmArgumentProviders += CommandLineArgumentProvider {
+            listOf(
+                "-Drobot-server.port=8582",
+                "-Djb.privacy.policy.text=<!--999.999-->",
+                "-Djb.consents.confirmation.enabled=false",
+                "-Didea.initially.ask.config=never",
+                "-Didea.trust.all.projects=true",
+                "-Dide.show.tips.on.startup.default.value=false",
+                "-Didea.suppress.statistics.report=true",
+                "-Didea.plugins.host=http://127.0.0.1:9",
+                "-Dsun.java2d.uiScale=1.5",
+            )
+        }
+    }
+    plugins {
+        robotServerPlugin("0.11.23")
+    }
+}
+
 tasks {
     test {
         useJUnitPlatform()

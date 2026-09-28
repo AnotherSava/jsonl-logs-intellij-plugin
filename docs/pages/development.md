@@ -30,6 +30,7 @@ Then in your IDE: **Settings → Plugins → ⚙ → Install plugin from disk…
 | `./gradlew compileKotlin` | Fast syntax + type check without running tests |
 | `./gradlew buildPlugin` | Produces the installable zip at `build/distributions/intellij-jsonl-extension-<version>.zip` |
 | `./gradlew runIde` | Launches a sandbox IntelliJ IDEA with the plugin preloaded. Useful for manual testing |
+| `./gradlew runIdeForScreenshots` | Launches the documentation-screenshot sandbox: IntelliJ IDEA 2026.1 at 1.5× with the Remote Robot server on port 8582. The capture script starts and drives it |
 | `./gradlew verifyPlugin` | Runs the JetBrains plugin verifier against recommended IDEs (downloads them on first run) |
 | `./gradlew build` | Compile + test. Does not produce the plugin zip; add `buildPlugin` for that |
 
@@ -100,6 +101,10 @@ Running `./gradlew runIde` launches a sandbox IDE with the plugin preloaded, whi
 4. Relaunch the IDE.
 
 For an automated stop/rebuild/extract/relaunch loop usable from Claude Code, see the [deploy skill](https://github.com/AnotherSava/claude-code-common/tree/main/claude/skills/deploy) in `claude-code-common`.
+
+## Documentation screenshots
+
+The images under `docs/screenshots/` are made by `python docs/screenshots/capture/capture.py <shot>`, which launches the `runIdeForScreenshots` sandbox, stages each frame through the plugin's own settings and a fixture log, then paints or captures it. `docs/screenshots/screenshots.json` records what each frame shows and the command that reproduces it. The unframed captures sit in `docs/screenshots/raw/`, kept out of the published site. The gear menu and the two Settings dialogs are read off the screen, so capturing them takes over the machine for a moment.
 
 ## Extension points
 
