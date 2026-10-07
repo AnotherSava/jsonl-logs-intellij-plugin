@@ -1,1 +1,2 @@
 - [Archived repo push](project_archived_repo_push.md) — GitHub repo is archived: unarchive, push, wait for Pages, re-archive; ask with the push
+- [macOS gate needs the JBR](project_macos_gate_needs_jbr.md) — no JDK on the Mac; export JAVA_HOME to IntelliJ's bundled JBR or the Gradle step fails
