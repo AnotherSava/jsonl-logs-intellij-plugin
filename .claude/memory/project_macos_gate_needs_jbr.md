@@ -19,6 +19,8 @@ clone has its own JDK and needs none of this.
 
 **How to apply:** prefix any `gradlew` or `.claude/commit-checks.sh` run on macOS with
 `export JAVA_HOME="/Applications/IntelliJ IDEA.app/Contents/jbr/Contents/Home"`. Stop the daemon
-afterwards (`bash ./gradlew --stop`) so nothing is left running. Installing a real JDK, or teaching
-the gate script to fall back to a bundled JBR, would both remove the need — neither has been decided.
-See [[project_archived_repo_push]] for the other macOS-side constraint on finishing a commit here.
+afterwards (`bash ./gradlew --stop`) so nothing is left running. No JDK is planned for this machine:
+the project is archived and rarely checked out, so exporting `JAVA_HOME` is the standing answer rather
+than a stopgap, and neither installing a JDK nor teaching the gate script to find a runtime is on the
+table (decided 2026-10-06). See [[project_archived_repo_push]] for the other macOS-side constraint on
+finishing a commit here.
